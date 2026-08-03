@@ -1,0 +1,12 @@
+packages:
+  - packages/*
+  - apps/scanner
+  - apps/attendee
+  - apps/dashboard
+  - examples/*
+  - docs
+  - bench
+  - demo
+
+allowBuilds:
+  esbuild: true
