@@ -1,0 +1,7 @@
+dist/
+node_modules/
+pnpm-lock.yaml
+docs/.vitepress/cache/
+CHANGELOG.md
+apps/android/
+apps/ios/
