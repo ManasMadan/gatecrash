@@ -1,0 +1,37 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+coverage/
+docs/.vitepress/cache
+docs/.vitepress/dist
+*.tgz
+
+# Go build output. The whole product is one static binary; it is built, never
+# committed.
+/bin/
+*.test
+*.out
+
+# Box state. A running box writes its database, its minted CA and its event
+# keys here; none of it belongs in git, and the keys especially do not.
+/var/
+*.db
+*.db-wal
+*.db-shm
+*.pem
+*.key
+!deploy/**/*.example.pem
+
+# Simulator artifacts. Seeds are cheap to rerun and the traces are large.
+/sim-out/
+*.jsonl.gz
+
+# Android / iOS build output
+apps/android/.gradle/
+apps/android/build/
+apps/android/**/build/
+apps/android/local.properties
+apps/ios/.build/
+apps/ios/**/xcuserdata/
+*.xcworkspace/xcuserdata/
