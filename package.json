@@ -1,0 +1,46 @@
+{
+  "name": "gatecrash-monorepo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.15.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "pnpm -r build && pnpm go:build",
+    "test": "pnpm -r test && pnpm go:test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint . && pnpm go:lint",
+    "format": "prettier --write . && gofmt -w .",
+    "format:check": "prettier --check . && scripts/check-gofmt.sh",
+    "go:build": "scripts/build.sh",
+    "go:test": "go test ./...",
+    "go:test:race": "go test -race ./...",
+    "go:lint": "go vet ./... && golangci-lint run",
+    "sim": "go run ./cmd/gatecrash-sim event-day --seeds 256",
+    "sim:mesh": "go run ./cmd/gatecrash-sim mesh --nodes 500 --sweep-k",
+    "bench": "pnpm --filter @gatecrash/bench bench",
+    "demo": "pnpm --filter @gatecrash/demo demo",
+    "changeset": "changeset",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,yaml,yml}": ["prettier --write"],
+    "*.go": ["gofmt -w"]
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.0",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "@eslint/js": "^9.28.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.28.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.7.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.34.0",
+    "vitest": "^3.2.0"
+  }
+}
