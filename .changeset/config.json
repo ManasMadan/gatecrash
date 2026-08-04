@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "access": "public",
+  "baseBranch": "master",
+  "updateInternalDependencies": "patch",
+  "fixed": [["@gatecrash/protocol", "@gatecrash/ui"]],
+  "ignore": ["@gatecrash/docs", "@gatecrash/bench", "@gatecrash/demo"]
+}
