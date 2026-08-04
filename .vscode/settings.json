@@ -1,0 +1,12 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" },
+  "[go]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.formatOnSave": true
+  },
+  "go.lintTool": "golangci-lint",
+  "go.lintOnSave": "workspace",
+  "go.testFlags": ["-race"],
+  "gopls": { "ui.semanticTokens": true }
+}
