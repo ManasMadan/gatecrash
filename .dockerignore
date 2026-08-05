@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+docs/.vitepress/cache
+docs/.vitepress/dist
+.git
+*.tgz
+bin/
+var/
+sim-out/
+apps/android
+apps/ios
