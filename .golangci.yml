@@ -1,0 +1,70 @@
+# The box is one static binary that runs unattended on hardware nobody can ssh
+# into during an event. The linter set is chosen to catch the failure modes that
+# are unrecoverable in that setting: ignored errors, leaked goroutines, silent
+# integer truncation in wire encoders, and unchecked type assertions.
+version: '2'
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - copyloopvar
+    - durationcheck
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - nilerr
+    - noctx
+    - perfsprint
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - usestdlibvars
+    - wastedassign
+
+  settings:
+    errcheck:
+      # A failed Close on a UDP socket we are already tearing down, and a failed
+      # write to an SSE client that has already walked away, are both nothing.
+      exclude-functions:
+        - (net.PacketConn).Close
+        - (net.Conn).Close
+        - (io.Closer).Close
+    gosec:
+      excludes:
+        # G404: the simulator and the mesh relay decision deliberately use
+        # math/rand seeded from a fixed value. Determinism is the requirement;
+        # crypto/rand would make replay impossible.
+        - G404
+    revive:
+      rules:
+        - name: exported
+          arguments: [checkPrivateReceivers]
+        - name: package-comments
+    gocritic:
+      enabled-tags: [diagnostic, performance, style]
+      disabled-checks:
+        # The wire encoders read better as explicit if/else chains than as
+        # switches, and appendAssign fires on every byte-slice builder.
+        - ifElseChain
+        - appendAssign
+
+  exclusions:
+    rules:
+      # Tests are allowed to be blunt: unchecked errors on setup helpers, magic
+      # numbers in fixtures, and long functions that spell out a scenario.
+      - path: _test\.go
+        linters: [errcheck, gosec, revive, gocritic]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes: [github.com/ManasMadan/gatecrash]
