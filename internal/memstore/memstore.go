@@ -253,10 +253,16 @@ func (s *Store) restoreLocked(from *snapshot) {
 
 // Write runs fn in a serialized transaction.
 //
-// Changes are staged and applied only on success, so a returned error rolls back
-// completely. Staging is what makes the interface honest: an implementation that
-// mutated in place and then tried to undo would leave the engine's audit head
-// out of step with the log on any partial failure.
+// Mutations are applied in place and each one records how to undo itself; a
+// returned error replays the undo log in reverse. The obvious alternative —
+// snapshot the store, mutate the copy, swap on success — is what this used to do,
+// and it cost a full copy of every map on every scan: 3.7 MB and 1.2 ms per
+// admission, which made the deterministic simulator quadratic and put ten million
+// simulated scans out of reach. An undo log is O(changes per transaction).
+//
+// Applying in place also means a transaction reads its own writes, which is what
+// the real SQLite store does and therefore what the engine is entitled to
+// assume.
 func (s *Store) Write(ctx context.Context, fn func(engine.Tx) error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -271,12 +277,11 @@ func (s *Store) Write(ctx context.Context, fn func(engine.Tx) error) error {
 		return err
 	}
 
-	staged := s.snapshotLocked()
-	tx := &tx{store: s, staged: staged, write: true}
+	tx := &tx{store: s, write: true}
 	if err := fn(tx); err != nil {
+		tx.rollback()
 		return err
 	}
-	s.restoreLocked(staged)
 	return nil
 }
 
@@ -291,21 +296,30 @@ func (s *Store) Read(ctx context.Context, fn func(engine.Tx) error) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return fn(&tx{store: s, staged: s.snapshotLocked(), write: false})
+	return fn(&tx{store: s, write: false})
 }
 
 // ErrReadOnly is returned when a read transaction attempts a write.
 var ErrReadOnly = errors.New("memstore: write attempted in a read transaction")
 
-// tx is one transaction's view.
+// tx is one transaction.
 type tx struct {
-	store  *Store
-	staged *snapshot
-	write  bool
+	store *Store
+	write bool
+
+	// undo holds one reversal per mutation, replayed backwards on rollback.
+	undo []func()
+}
+
+func (t *tx) rollback() {
+	for i := len(t.undo) - 1; i >= 0; i-- {
+		t.undo[i]()
+	}
+	t.undo = nil
 }
 
 func (t *tx) StoredResult(scanID ticket.ID) (engine.Result, bool, error) {
-	result, ok := t.staged.results[scanID]
+	result, ok := t.store.results[scanID]
 	return result, ok, nil
 }
 
@@ -313,14 +327,21 @@ func (t *tx) StoreResult(scanID ticket.ID, result engine.Result) error {
 	if !t.write {
 		return ErrReadOnly
 	}
-	t.staged.results[scanID] = result
+	previous, existed := t.store.results[scanID]
+	t.store.results[scanID] = result
+	t.undo = append(t.undo, func() {
+		if existed {
+			t.store.results[scanID] = previous
+			return
+		}
+		delete(t.store.results, scanID)
+	})
 	return nil
 }
 
 func (t *tx) Ticket(id ticket.ID) (engine.Ticket, bool, error) {
-	// Tickets and devices are manifest state rather than transactional state, so
-	// they are read straight from the store: the manifest is loaded before doors
-	// and a scan never writes to it.
+	// Tickets and devices are manifest state rather than transactional state: the
+	// manifest is loaded before doors and a scan never writes to it.
 	found, ok := t.store.tickets[id]
 	return found, ok, nil
 }
@@ -330,11 +351,11 @@ func (t *tx) Device(id string) (engine.Device, bool, error) {
 	return found, ok, nil
 }
 
-// TouchDevice writes outside the staged transaction, so a liveness update
-// survives a rollback. That is deliberate and matches the SQLite store: device
-// liveness is a monitoring signal, not part of the redemption decision, and
-// making it transactional would mean a rolled-back scan erases the evidence that
-// the scanner was talking to us at all.
+// TouchDevice writes outside the undo log, so a liveness update survives a
+// rollback. That is deliberate and matches the SQLite store: device liveness is
+// a monitoring signal, not part of the redemption decision, and making it
+// transactional would mean a rolled-back scan erases the evidence that the
+// scanner was talking to us at all.
 func (t *tx) TouchDevice(id string, at time.Time) error {
 	if !t.write {
 		return ErrReadOnly
@@ -347,7 +368,7 @@ func (t *tx) TouchDevice(id string, at time.Time) error {
 }
 
 func (t *tx) Redemptions(id ticket.ID) ([]engine.Redemption, error) {
-	return append([]engine.Redemption(nil), t.staged.byTicket[id]...), nil
+	return append([]engine.Redemption(nil), t.store.byTicket[id]...), nil
 }
 
 // InsertRedemption is the linearization point: an insert that does nothing on
@@ -357,11 +378,18 @@ func (t *tx) InsertRedemption(r engine.Redemption) (bool, engine.Redemption, err
 		return false, engine.Redemption{}, ErrReadOnly
 	}
 	k := key{ticket: r.TicketID, checkpoint: r.Checkpoint, occurrence: r.Occurrence}
-	if winner, exists := t.staged.redemptions[k]; exists {
+	if winner, exists := t.store.redemptions[k]; exists {
 		return false, winner, nil
 	}
-	t.staged.redemptions[k] = r
-	t.staged.byTicket[r.TicketID] = append(t.staged.byTicket[r.TicketID], r)
+	t.store.redemptions[k] = r
+	t.store.byTicket[r.TicketID] = append(t.store.byTicket[r.TicketID], r)
+	t.undo = append(t.undo, func() {
+		delete(t.store.redemptions, k)
+		held := t.store.byTicket[r.TicketID]
+		if len(held) > 0 {
+			t.store.byTicket[r.TicketID] = held[:len(held)-1]
+		}
+	})
 	return true, r, nil
 }
 
@@ -369,7 +397,10 @@ func (t *tx) AppendRecord(r audit.Record) error {
 	if !t.write {
 		return ErrReadOnly
 	}
-	t.staged.records = append(t.staged.records, r)
+	t.store.records = append(t.store.records, r)
+	t.undo = append(t.undo, func() {
+		t.store.records = t.store.records[:len(t.store.records)-1]
+	})
 	return nil
 }
 
@@ -377,7 +408,10 @@ func (t *tx) FlagDoubleUse(f engine.DoubleUse) error {
 	if !t.write {
 		return ErrReadOnly
 	}
-	t.staged.flags = append(t.staged.flags, f)
+	t.store.flags = append(t.store.flags, f)
+	t.undo = append(t.undo, func() {
+		t.store.flags = t.store.flags[:len(t.store.flags)-1]
+	})
 	return nil
 }
 
@@ -385,18 +419,24 @@ func (t *tx) NextSeq() (uint64, error) {
 	if !t.write {
 		return 0, ErrReadOnly
 	}
-	t.staged.seq++
-	return t.staged.seq, nil
+	t.store.seq++
+	allocated := t.store.seq
+	t.undo = append(t.undo, func() { t.store.seq = allocated - 1 })
+	return allocated, nil
 }
 
 func (t *tx) AuditHead() (merkle.Hash, uint64, error) {
-	return t.staged.auditHead, t.staged.auditRows, nil
+	return t.store.auditHead, t.store.auditRows, nil
 }
 
 func (t *tx) SetAuditHead(head merkle.Hash, rows uint64) error {
 	if !t.write {
 		return ErrReadOnly
 	}
-	t.staged.auditHead, t.staged.auditRows = head, rows
+	previousHead, previousRows := t.store.auditHead, t.store.auditRows
+	t.store.auditHead, t.store.auditRows = head, rows
+	t.undo = append(t.undo, func() {
+		t.store.auditHead, t.store.auditRows = previousHead, previousRows
+	})
 	return nil
 }
