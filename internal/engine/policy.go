@@ -141,17 +141,37 @@ func (e *Engine) unmetPrerequisites(cp venue.Checkpoint, history []Redemption) [
 
 // insideZones replays a ticket's history into the set of zones it is currently
 // inside. Inbound passes add, outbound passes remove.
+//
+// An exit removes the zone and everything nested inside it. Somebody who walks
+// out of the perimeter is not still in the arena, and without the cascade a
+// holder could leave the site and then walk straight into the pit on the
+// strength of an arena scan from an hour earlier.
 func (e *Engine) insideZones(history []Redemption) map[venue.ZoneCode]bool {
 	inside := make(map[venue.ZoneCode]bool, len(history))
 	for _, r := range history {
 		switch r.Direction {
 		case venue.DirectionOut:
-			delete(inside, r.Zone)
+			for zone := range inside {
+				if e.cfg.Venue.SatisfiesZone(zone, r.Zone) {
+					delete(inside, zone)
+				}
+			}
 		default:
 			inside[r.Zone] = true
 		}
 	}
 	return inside
+}
+
+// isInside reports whether a ticket is currently inside a zone, counting an
+// admission into any zone nested inside it.
+func (e *Engine) isInside(zone venue.ZoneCode, history []Redemption) bool {
+	for held := range e.insideZones(history) {
+		if e.cfg.Venue.SatisfiesZone(held, zone) {
+			return true
+		}
+	}
+	return false
 }
 
 // InsideZones is insideZones for callers outside the package: the wayfinding
@@ -212,26 +232,37 @@ func (e *Engine) nextPass(cp venue.Checkpoint, scan Scan, history []Redemption) 
 		return out, Admit
 
 	case venue.PolicyReEntry:
-		// Alternating in and out. An exit scan from somebody who is not inside is
-		// a WrongDirection rather than a denial: it usually means the guard has
-		// the toggle set the wrong way, and telling them so is more useful than
-		// telling them the ticket is bad.
-		last := lastDirection(here)
-		if direction == venue.DirectionOut && last != venue.DirectionIn {
-			out := pass{occurrence: uint32(len(here)), direction: direction}
-			if len(here) > 0 {
-				previous := admissionOf(here[len(here)-1], e.cfg.Venue)
-				out.previous = &previous
+		// Alternation is judged against whether the holder is currently inside
+		// the zone, not against prior passes at this particular door.
+		//
+		// The difference matters for every real venue: people come in through
+		// the north gate and leave through the dedicated exit, so an exit door
+		// has no prior passes for them at all. Judging by the door would refuse
+		// everybody the first time they tried to leave.
+		insideNow := e.isInside(cp.Zone, history)
+		occurrence := uint32(len(here))
+
+		var previous *Admission
+		if len(here) > 0 {
+			recent := admissionOf(here[len(here)-1], e.cfg.Venue)
+			previous = &recent
+		}
+
+		if direction == venue.DirectionOut {
+			if !insideNow {
+				// Almost always the guard has the in/out toggle the wrong way
+				// round, so this is amber and says so rather than calling the
+				// ticket bad.
+				return pass{occurrence: occurrence, direction: direction, previous: previous}, WrongDirection
 			}
-			return out, WrongDirection
+			return pass{occurrence: occurrence, direction: direction}, Admit
 		}
-		if direction == venue.DirectionIn && last == venue.DirectionIn {
-			// Already inside and scanning in again. Harmless, and the honest
-			// answer is that they are already through this door.
-			previous := admissionOf(here[len(here)-1], e.cfg.Venue)
-			return pass{occurrence: uint32(len(here)), direction: direction, previous: &previous}, AlreadyUsed
+		if insideNow {
+			// Scanning in while already inside. Harmless, and the honest answer
+			// is that they are already through this door.
+			return pass{occurrence: occurrence, direction: direction, previous: previous}, AlreadyUsed
 		}
-		return pass{occurrence: uint32(len(here)), direction: direction}, Admit
+		return pass{occurrence: occurrence, direction: direction}, Admit
 
 	case venue.PolicyCounted:
 		used := len(here)
@@ -254,15 +285,6 @@ func (e *Engine) nextPass(cp venue.Checkpoint, scan Scan, history []Redemption) 
 		// function.
 		return pass{direction: direction}, WrongZone
 	}
-}
-
-// lastDirection returns the direction of the most recent pass at a checkpoint,
-// or the empty direction when there have been none.
-func lastDirection(here []Redemption) venue.Direction {
-	if len(here) == 0 {
-		return ""
-	}
-	return here[len(here)-1].Direction
 }
 
 // redirectsFor lists the checkpoints that would serve this ticket into a zone,
