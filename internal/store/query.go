@@ -90,6 +90,35 @@ func (s *Store) RedeemedIDs(ctx context.Context, checkpoint string) ([]string, u
 	return out, seq, rows.Err()
 }
 
+// TicketIDs streams every loaded ticket id, which is what the scanner's Bloom
+// filter is built from.
+//
+// A slice rather than a callback: fifty thousand 16-byte ids is 800 KB, which is
+// nothing next to the box's 150 MB budget, and the filter build needs them all
+// anyway. Returning ids rather than whole rows keeps the read off the signature
+// blobs, which are the bulk of the table.
+func (s *Store) TicketIDs(ctx context.Context) ([]ticket.ID, error) {
+	rows, err := s.reader.QueryContext(ctx, "SELECT id FROM tickets")
+	if err != nil {
+		return nil, fmt.Errorf("store: listing ticket ids: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ticket.ID
+	for rows.Next() {
+		var idHex string
+		if err := rows.Scan(&idHex); err != nil {
+			return nil, fmt.Errorf("store: listing ticket ids: %w", err)
+		}
+		id, err := ticket.ParseID(idHex)
+		if err != nil {
+			return nil, fmt.Errorf("store: ticket id %q: %w", idHex, err)
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 // AuditRows returns audit log rows in sequence order.
 //
 // from and to are inclusive; a zero `to` means everything. Used by the verifier,
