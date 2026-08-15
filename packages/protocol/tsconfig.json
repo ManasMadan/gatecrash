@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src", "test", "tsup.config.ts", "vitest.config.ts"]
+}
