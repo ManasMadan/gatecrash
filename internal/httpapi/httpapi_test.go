@@ -1303,6 +1303,12 @@ func BenchmarkScanOverHTTP(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		// The rate limiter is a policy about how fast a human can present tickets,
+		// not a statement about how fast the box can decide them. Advancing the
+		// clock in step keeps it out of the measurement; without this the benchmark
+		// measures the limiter, which is not the interesting number.
+		h.advance(time.Second / 20)
+
 		result, status := h.scan(enrolled.Token, holders[i].Payload, "gate-north")
 		if status != http.StatusOK || result.Verdict != engine.Admit {
 			b.Fatalf("status %d verdict %s", status, result.Verdict)
