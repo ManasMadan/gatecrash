@@ -143,6 +143,25 @@ func hashRow(prev merkle.Hash, r Record) merkle.Hash {
 	return merkle.HashLeaf(body)
 }
 
+// Link computes a row's chain fields from the previous head and the next
+// sequence number, without mutating anything.
+//
+// This exists because the redemption engine cannot use a mutating chain. It
+// links a row, writes it to SQLite, and only then advances its own head; if the
+// transaction rolls back, the chain must not have moved. A chain that advanced
+// on a rolled-back write would produce a permanent gap that every later row
+// inherits, and the log would never verify again.
+func Link(prev merkle.Hash, seq uint64, r Record) Record {
+	if prev.IsZero() {
+		prev = GenesisHash()
+	}
+	r.Seq = seq
+	r.PrevHash = prev
+	r.RowHash = merkle.Hash{}
+	r.RowHash = hashRow(prev, r)
+	return r
+}
+
 // GenesisHash is the chain's prev_hash for the very first row. It is the hash of
 // the domain string rather than zero, so that an empty chain and a chain whose
 // first row was deleted are distinguishable: a zero genesis would let somebody
@@ -227,9 +246,7 @@ func (c *Chain) Append(r Record) (Record, error) {
 	if r.Seq != 0 && r.Seq != next {
 		return Record{}, fmt.Errorf("%w: row claims seq %d, chain is at %d", ErrSequence, r.Seq, c.seq)
 	}
-	r.Seq = next
-	r.PrevHash = c.head
-	r.RowHash = hashRow(c.head, r)
+	r = Link(c.head, next, r)
 
 	c.head = r.RowHash
 	c.seq = next
