@@ -97,6 +97,19 @@ func SignGC1(key SigningKey, claims Claims) (string, error) {
 	return gc1Prefix + "." + claims.TicketID.String() + "." + encoding.EncodeToString(signature), nil
 }
 
+// EncodeGC1 renders a payload from an id and a signature the caller already
+// holds.
+//
+// Used by the attendee API, which has the signature in the manifest and does not
+// have the organizer's private key — the whole point of storing the signature is
+// that the box can reproduce a ticket without being able to mint one.
+func EncodeGC1(ticketID ID, signature []byte) string {
+	if len(signature) != ed25519.SignatureSize {
+		return ""
+	}
+	return gc1Prefix + "." + ticketID.String() + "." + encoding.EncodeToString(signature)
+}
+
 // GC1 is a parsed static payload. Parsing is separate from verification
 // because a scanner does them at different times: it parses and looks the id up
 // in its Bloom filter with zero crypto, and only verifies the signature for ids
