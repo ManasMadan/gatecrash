@@ -38,7 +38,7 @@ func (s *Store) Deltas(ctx context.Context, since uint64, limit int) ([]engine.R
 	}
 	defer rows.Close()
 
-	var out []engine.Redemption
+	out := []engine.Redemption{}
 	for rows.Next() {
 		r, err := scanRedemption(rows)
 		if err != nil {
