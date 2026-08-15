@@ -235,9 +235,19 @@ type Filter struct {
 	// Kinds, when non-empty, restricts to these kinds.
 	Kinds []Kind
 
-	// Zone, when set, restricts to incidents in this zone or any zone nested
-	// inside it, which is how a zone supervisor gets their own view.
+	// Zone, when set, restricts to incidents in this zone. By default the match is
+	// hierarchical — a zone and everything nested inside it — which is how a zone
+	// supervisor watching the arena also sees the pit, where the crush happens.
 	Zone venue.ZoneCode
+
+	// ExactZone narrows Zone to that zone alone, with nothing nested.
+	//
+	// This is what a gate wants. A bouncer on the north door can act on incidents
+	// at their own door; the pit's crush is the pit staff's problem and the control
+	// room's, and putting it on the gate's list is how a bouncer ends up scrolling
+	// a feed instead of watching the queue. Emergencies reach every gate by a
+	// separate path, because an evacuation is everybody's business.
+	ExactZone bool
 
 	// MinSeverity drops anything quieter.
 	MinSeverity Severity
@@ -274,7 +284,7 @@ func (b *Board) List(f Filter) []Incident {
 			continue
 		case f.MinSeverity != "" && rank(i.Severity) < rank(f.MinSeverity):
 			continue
-		case f.Zone != "" && !b.inZone(i, f.Zone):
+		case f.Zone != "" && !b.inZone(i, f.Zone, f.ExactZone):
 			continue
 		}
 		out = append(out, i)
@@ -293,12 +303,12 @@ func (b *Board) List(f Filter) []Incident {
 	return out
 }
 
-// inZone reports whether an incident sits inside a zone or anything nested in it.
-func (b *Board) inZone(i Incident, zone venue.ZoneCode) bool {
+// inZone reports whether an incident matches a zone filter.
+func (b *Board) inZone(i Incident, zone venue.ZoneCode, exact bool) bool {
 	if i.Zone == zone {
 		return true
 	}
-	if b.venue == nil {
+	if exact || b.venue == nil {
 		return false
 	}
 	return b.venue.SatisfiesZone(i.Zone, zone)
