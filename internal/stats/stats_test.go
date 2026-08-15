@@ -102,8 +102,8 @@ func TestOccupancyCountsNestedZones(t *testing.T) {
 	}
 
 	snapshot := tracker.Snapshot()
-	if snapshot.Admitted != 110 {
-		t.Errorf("headline admitted is %d, want 110", snapshot.Admitted)
+	if snapshot.Inside != 110 {
+		t.Errorf("headline inside count is %d, want 110", snapshot.Inside)
 	}
 	byCode := zonesByCode(snapshot.Zones)
 	if byCode["arena"].Occupied != 10 {
@@ -189,8 +189,8 @@ func TestDenialsAreCountedByVerdict(t *testing.T) {
 		t.Errorf("north gate reports %d admitted %d denied", gates["gate-north"].Admitted, gates["gate-north"].Denied)
 	}
 	// Denials must not inflate occupancy.
-	if snapshot.Admitted != 1 {
-		t.Errorf("headline admitted is %d, want 1", snapshot.Admitted)
+	if snapshot.Inside != 1 {
+		t.Errorf("headline inside count is %d, want 1", snapshot.Inside)
 	}
 }
 
@@ -301,13 +301,20 @@ func TestTurnoutByTierAndSection(t *testing.T) {
 	tracker, c := newTracker(t)
 	tracker.SetIssued(500, map[venue.TierCode]int{"ga": 400, "vip": 100})
 
+	// Turnout is counted at the outer gate, which is where an arrival happens.
 	for i := 0; i < 120; i++ {
 		tracker.Observe(admit(c.now(), "gate-north", "perimeter", "ga", "scanner-north"))
 	}
 	for i := 0; i < 25; i++ {
-		result := admit(c.now(), "pit-gate", "pit", "vip", "scanner-pit")
-		result.Seat = venue.SeatRef{Section: "golden-circle"}
-		tracker.Observe(result)
+		arrival := admit(c.now(), "gate-north", "perimeter", "vip", "scanner-north")
+		arrival.Seat = venue.SeatRef{Section: "golden-circle"}
+		tracker.Observe(arrival)
+
+		// The same holder later reaches the pit, which is where the section fills.
+		// Both are admissions; only one is an arrival and only one is a seat taken.
+		seated := admit(c.now(), "pit-gate", "pit", "vip", "scanner-pit")
+		seated.Seat = venue.SeatRef{Section: "golden-circle"}
+		tracker.Observe(seated)
 	}
 
 	snapshot := tracker.Snapshot()

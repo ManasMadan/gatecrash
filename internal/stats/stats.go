@@ -47,9 +47,14 @@ const quietAfter = 2 * time.Minute
 
 // Live is the whole dashboard payload: one snapshot, one JSON object, one poll.
 type Live struct {
-	// Admitted is the number of people currently inside the outermost zone,
-	// which is the headline number on the wall display.
-	Admitted int `json:"admitted"`
+	// Inside is how many people are currently inside the outermost zone, which is
+	// the headline number on the wall display.
+	//
+	// Named for what it is rather than "admitted": it is an occupancy, so it goes
+	// down when people leave, and it is not the same as the number of admissions
+	// recorded. Conflating the two is how a dashboard ends up claiming more people
+	// are present than bought tickets.
+	Inside int `json:"inside"`
 
 	// Issued is how many tickets exist, so the headline can be "3,412 of 5,000".
 	Issued int `json:"issued"`
@@ -274,8 +279,23 @@ func (t *Tracker) Observe(result engine.Result) {
 	}
 
 	t.admittedByGate[result.Checkpoint]++
-	t.admittedByTier[result.Tier]++
-	if result.Seat.Section != "" {
+
+	// Tier turnout counts arrivals at the event, not admissions. One ticket passes
+	// several checkpoints in an evening — the outer gate, a portal, the pit — and
+	// counting each one would report three times the turnout it actually had.
+	//
+	// "Arrived" is defined as an admission into a root zone, which is the outer
+	// perimeter. That happens exactly once per ticket per event, needs no
+	// per-ticket bookkeeping, and is the number a promoter means when they ask how
+	// many VIPs showed up.
+	if t.isRootZone(result.Zone) {
+		t.admittedByTier[result.Tier]++
+	}
+
+	// Section fill counts admissions into the section's own zone, for the same
+	// reason: a Block A holder scanning at the outer gate has not taken their seat
+	// yet.
+	if result.Seat.Section != "" && t.sectionZone(result.Seat.Section) == result.Zone {
 		t.admittedBySection[result.Seat.Section]++
 	}
 
@@ -344,11 +364,11 @@ func (t *Tracker) Snapshot() Live {
 			entry.Fill = float64(occupied) / float64(zone.Capacity)
 			entry.Over = occupied > zone.Capacity
 		}
-		if zone.Parent == "" && occupied > out.Admitted {
+		if zone.Parent == "" && occupied > out.Inside {
 			// The headline number is the outermost zone's occupancy. A venue with
 			// several roots takes the largest, which is the only reading that
 			// cannot understate the crowd.
-			out.Admitted = occupied
+			out.Inside = occupied
 		}
 		out.Zones = append(out.Zones, entry)
 	}
@@ -406,6 +426,28 @@ func (t *Tracker) Snapshot() Live {
 	sort.Slice(out.Devices, func(i, j int) bool { return out.Devices[i].ID < out.Devices[j].ID })
 
 	return out
+}
+
+// isRootZone reports whether a zone is an outermost one, which is what "arrived
+// at the event" means. Caller holds the lock.
+func (t *Tracker) isRootZone(code venue.ZoneCode) bool {
+	if t.venue == nil {
+		return code != ""
+	}
+	zone, ok := t.venue.Zone(code)
+	return ok && zone.Parent == ""
+}
+
+// sectionZone returns the zone a section sits in. Caller holds the lock.
+func (t *Tracker) sectionZone(code venue.SectionCode) venue.ZoneCode {
+	if t.venue == nil {
+		return ""
+	}
+	section, ok := t.venue.Section(code)
+	if !ok {
+		return ""
+	}
+	return section.Zone
 }
 
 // nested returns a zone's occupancy including every zone inside it. Caller holds

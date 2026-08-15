@@ -980,8 +980,8 @@ func TestDashboardStats(t *testing.T) {
 	if body.Live.Scans != 2 || body.Live.Denied != 1 {
 		t.Errorf("live picture is %d scans, %d denied", body.Live.Scans, body.Live.Denied)
 	}
-	if body.Live.Admitted != 1 {
-		t.Errorf("headline admitted is %d", body.Live.Admitted)
+	if body.Live.Inside != 1 {
+		t.Errorf("headline inside count is %d", body.Live.Inside)
 	}
 	// A wall of one verdict at one gate is the most useful diagnostic the
 	// dashboard shows.
@@ -1158,8 +1158,8 @@ func TestSignedExport(t *testing.T) {
 	if report.Event != "Sundown Sessions" || report.Checkpoint.Rows == 0 {
 		t.Errorf("the report is %+v", report.Event)
 	}
-	if report.Totals.Admitted != 1 {
-		t.Errorf("the report says %d admitted", report.Totals.Admitted)
+	if report.Totals.Inside != 1 {
+		t.Errorf("the report says %d admitted", report.Totals.Inside)
 	}
 }
 
