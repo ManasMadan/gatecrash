@@ -6,9 +6,12 @@ import { Client } from '@/client'
 /** A fetch stub that records what it was called with. */
 function stubFetch(responder: (url: string, init?: RequestInit) => Response | Promise<Response>): {
   fetch: typeof globalThis.fetch
-  calls: { url: string; init?: RequestInit }[]
+  calls: { url: string; init: RequestInit | undefined }[]
 } {
-  const calls: { url: string; init?: RequestInit }[] = []
+  // `init: RequestInit | undefined` rather than `init?:` — under
+  // exactOptionalPropertyTypes those are different types, and this one is honest:
+  // fetch really is called with the property present and undefined.
+  const calls: { url: string; init: RequestInit | undefined }[] = []
   const fetch = ((input: string | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input.href
     calls.push({ url, init })
