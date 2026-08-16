@@ -1,0 +1,13 @@
+{
+  "name": "@gatecrash/demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The docker-compose showcase: a box, a presale service, and a scripted event. Never published.",
+  "type": "module",
+  "scripts": {
+    "demo": "node demo.mjs",
+    "build": "echo \"nothing to build\" && exit 0",
+    "test": "echo \"no tests\" && exit 0",
+    "typecheck": "echo \"no typecheck\" && exit 0"
+  }
+}

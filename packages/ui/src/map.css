@@ -1,0 +1,232 @@
+/*
+ * The venue map.
+ *
+ * Drawn as one SVG in the venue's own coordinate space, which is what makes it work
+ * offline and at any size: no tiles, no image requests, no map provider. The whole
+ * thing is a few kilobytes of geometry that came down inside the manifest.
+ *
+ * The visual hierarchy is decided by what somebody holding it is looking for. In
+ * order: their own seat, the route to it, the doors they can use, then everything
+ * else as context. Zones and section fills are deliberately low-contrast so the
+ * route and the seat marker are the only bright things on the screen.
+ */
+
+.gc-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  background: var(--gc-ink);
+  border-radius: var(--gc-radius);
+  overflow: hidden;
+}
+
+.gc-map__outline {
+  fill: var(--gc-surface);
+  stroke: var(--gc-line);
+  stroke-width: 0.6;
+}
+
+/* The stage is the thing everybody orients by, so it is the one piece of context
+ * drawn at full contrast. */
+.gc-map__stage {
+  fill: var(--gc-text-faint);
+  stroke: var(--gc-text-dim);
+  stroke-width: 0.4;
+}
+
+.gc-map__stage-label {
+  fill: var(--gc-ink);
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.gc-map__zone {
+  fill: var(--gc-accent);
+  fill-opacity: 0.06;
+  stroke: var(--gc-line);
+  stroke-width: 0.4;
+  stroke-dasharray: 2 2;
+}
+
+/* A zone the holder cannot enter is drawn as absence rather than as a warning: a
+ * map covered in red hatching is a map nobody reads. */
+.gc-map__zone--forbidden {
+  fill: var(--gc-ink);
+  fill-opacity: 0.55;
+  stroke: none;
+}
+
+.gc-map__section {
+  fill: var(--gc-accent);
+  fill-opacity: 0.12;
+  stroke: var(--gc-accent);
+  stroke-opacity: 0.35;
+  stroke-width: 0.4;
+}
+
+/* The holder's own section, lifted out of the background. */
+.gc-map__section--mine {
+  fill-opacity: 0.28;
+  stroke-opacity: 0.9;
+  stroke-width: 0.8;
+}
+
+.gc-map__section-label {
+  fill: var(--gc-text-dim);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.gc-map__seat {
+  fill: var(--gc-text-faint);
+  fill-opacity: 0.5;
+}
+
+.gc-map__seat--taken {
+  fill: var(--gc-text-dim);
+}
+
+.gc-map__seat--blocked {
+  fill: none;
+  stroke: var(--gc-text-faint);
+  stroke-width: 0.2;
+}
+
+/* Their seat. The brightest thing on the map, with a halo so it is findable at a
+ * glance on a zoomed-out view where it is two pixels across. */
+.gc-map__seat--mine {
+  fill: var(--gc-admit);
+  stroke: #fff;
+  stroke-width: 0.4;
+}
+
+.gc-map__seat-halo {
+  fill: none;
+  stroke: var(--gc-admit);
+  stroke-width: 0.6;
+  opacity: 0.5;
+  animation: gc-map-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes gc-map-pulse {
+  0%,
+  100% {
+    r: 2.5;
+    opacity: 0.55;
+  }
+  50% {
+    r: 4.5;
+    opacity: 0.1;
+  }
+}
+
+/* The route. Dashed and animated so the direction of travel is unambiguous — a
+ * plain line leaves somebody guessing which end they are at. */
+.gc-map__route {
+  fill: none;
+  stroke: var(--gc-accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 4 3;
+  animation: gc-map-flow 1.4s linear infinite;
+}
+
+@keyframes gc-map-flow {
+  to {
+    stroke-dashoffset: -7;
+  }
+}
+
+.gc-map__route-casing {
+  fill: none;
+  stroke: var(--gc-ink);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+
+/* Where they are now. */
+.gc-map__here {
+  fill: var(--gc-accent);
+  stroke: #fff;
+  stroke-width: 0.5;
+}
+
+.gc-map__gate {
+  fill: var(--gc-surface-raised);
+  stroke: var(--gc-text-dim);
+  stroke-width: 0.4;
+}
+
+/* A door they can use right now. */
+.gc-map__gate--open {
+  fill: var(--gc-admit);
+  stroke: #fff;
+}
+
+/* A door they will be able to use once they have been somewhere else first. */
+.gc-map__gate--later {
+  fill: var(--gc-redirect);
+  stroke: none;
+}
+
+.gc-map__gate-label {
+  fill: var(--gc-text);
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.gc-map__amenity {
+  fill: var(--gc-surface-raised);
+  stroke: var(--gc-line);
+  stroke-width: 0.3;
+}
+
+.gc-map__amenity-glyph {
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  fill: var(--gc-text-dim);
+}
+
+.gc-map__amenity--highlight .gc-map__amenity-glyph {
+  fill: var(--gc-text);
+}
+
+.gc-map__amenity--highlight {
+  stroke: var(--gc-accent);
+  stroke-width: 0.6;
+}
+
+/* Controls. Large, because this is operated one-handed in a crowd. */
+.gc-map-controls {
+  display: flex;
+  gap: var(--gc-gap);
+  padding: var(--gc-gap) 0 0;
+}
+
+.gc-map-controls button {
+  flex: 1;
+  min-height: var(--gc-touch);
+  border-radius: var(--gc-radius);
+  background: var(--gc-surface-raised);
+  color: var(--gc-text);
+  font-weight: 700;
+  border: 1px solid var(--gc-line);
+}
+
+.gc-map-controls button[aria-pressed='true'] {
+  background: var(--gc-accent);
+  border-color: var(--gc-accent);
+  color: #fff;
+}

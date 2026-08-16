@@ -1,0 +1,157 @@
+/*
+ * Design tokens.
+ *
+ * Three apps share these: the scanner a bouncer holds, the wallet an attendee
+ * opens, and the dashboard on a wall in the back room. They are the same product
+ * and they should look like it.
+ *
+ * Every colour choice here is decided by a physical constraint rather than by
+ * taste, and the constraints are unusual enough to be worth writing down:
+ *
+ * - The scanner is used outdoors, at night, in rain, at arm's length, by somebody
+ *   who has been standing up for six hours. The verdict colours are therefore
+ *   fully saturated and used at full-screen scale, which would be garish anywhere
+ *   else and is exactly right here.
+ * - About one man in twelve cannot reliably distinguish the green screen from the
+ *   red one, so every verdict also carries a distinct glyph and a distinct sound.
+ *   The colour is the fastest signal, never the only one.
+ * - The dashboard is often projected, so it is dark-first with high-contrast text:
+ *   a light dashboard on a projector in a lit room is unreadable.
+ *
+ * No font is loaded from anywhere. At the moment these apps are needed there is no
+ * internet, and a webfont request that hangs is a blank screen at a gate.
+ */
+
+:root {
+  /* Verdict colours. Saturated on purpose: these fill the whole screen. */
+  --gc-admit: #00b451;
+  --gc-admit-deep: #007a37;
+  --gc-deny: #d21b1b;
+  --gc-deny-deep: #8f0f0f;
+  --gc-redirect: #e07800;
+  --gc-redirect-deep: #9a5200;
+  --gc-amber: #e07800;
+
+  /* Surfaces. Dark-first, because two of the three apps are used in the dark. */
+  --gc-ink: #0b0d10;
+  --gc-surface: #141820;
+  --gc-surface-raised: #1c222c;
+  --gc-line: #2a323f;
+
+  --gc-text: #f2f5f8;
+  --gc-text-dim: #9aa7b6;
+  --gc-text-faint: #66727f;
+
+  /* Accents. Blue for information, purple for the organizer's own surfaces. */
+  --gc-accent: #3b82f6;
+  --gc-accent-deep: #1d4ed8;
+  --gc-organizer: #a855f7;
+
+  /* Incident severities, matching the box's four levels. */
+  --gc-info: #3b82f6;
+  --gc-warning: #e0a800;
+  --gc-urgent: #e07800;
+  --gc-emergency: #d21b1b;
+
+  /* Type. A system stack, so nothing is ever fetched. */
+  --gc-font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --gc-font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  /*
+   * Type scale. The two extremes are the interesting ones: --gc-verdict is read
+   * across a queue, and --gc-micro is only ever read by somebody holding the
+   * device and looking for it.
+   */
+  --gc-verdict: clamp(3.5rem, 22vw, 12rem);
+  --gc-glyph: clamp(6rem, 40vmin, 20rem);
+  --gc-huge: clamp(1.75rem, 7vw, 3rem);
+  --gc-large: 1.375rem;
+  --gc-body: 1rem;
+  --gc-small: 0.875rem;
+  --gc-micro: 0.75rem;
+
+  --gc-radius: 12px;
+  --gc-radius-lg: 20px;
+
+  /*
+   * Touch targets. 56px rather than the usual 44px minimum: the scanner is
+   * operated one-handed, in the dark, sometimes wearing gloves, by somebody who is
+   * also watching a queue.
+   */
+  --gc-touch: 56px;
+  --gc-touch-large: 88px;
+
+  --gc-gap: 12px;
+  --gc-pad: 16px;
+
+  /* Motion. Fast, because a verdict screen that animates in is a verdict screen
+   * somebody is waiting for. */
+  --gc-quick: 90ms;
+  --gc-settle: 220ms;
+}
+
+/*
+ * The attendee wallet is the one surface that follows the phone's own theme: it is
+ * read indoors and outdoors, in a pocket and in a queue, and fighting the system
+ * setting there is just rude.
+ */
+@media (prefers-color-scheme: light) {
+  :root[data-theme='auto'] {
+    --gc-ink: #f6f8fa;
+    --gc-surface: #ffffff;
+    --gc-surface-raised: #ffffff;
+    --gc-line: #dfe4ea;
+    --gc-text: #10151b;
+    --gc-text-dim: #5a6672;
+    --gc-text-faint: #8a939d;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--gc-ink);
+  color: var(--gc-text);
+  font-family: var(--gc-font);
+  font-size: var(--gc-body);
+  /* No overscroll bounce: on a scanner it looks like the app is falling apart. */
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+/*
+ * Nothing in these apps is text the user selects, and a long-press that selects
+ * "ALREADY USED" instead of registering as a tap is a real annoyance at a gate.
+ */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  min-height: var(--gc-touch);
+}
+
+/* Respect the setting. A full-screen colour flash is exactly what somebody with
+ * vestibular sensitivity has turned this on to avoid. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
