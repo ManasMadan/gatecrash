@@ -248,6 +248,12 @@ func (a *API) manifestBody(r *http.Request, device enroll.Device, checkpoint ven
 	if err != nil {
 		return ManifestResponse{}, err
 	}
+	if redeemed == nil {
+		// An empty list rather than null. A JSON null forces every client to
+		// special-case it, and the one that forgets crashes at a gate on the first
+		// scan of the evening.
+		redeemed = []string{}
+	}
 	now := a.deps.Now()
 
 	kinds := make([]IncidentKind, 0, len(incident.Kinds()))
