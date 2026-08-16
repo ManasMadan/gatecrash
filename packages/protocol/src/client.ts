@@ -271,12 +271,14 @@ export class Client {
       if (this.token) headers.Authorization = `Bearer ${this.token}`
       if (body !== undefined) headers['Content-Type'] = 'application/json'
 
-      const response = await this.doFetch(this.baseUrl + path, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: controller.signal,
-      })
+      // Assembled conditionally rather than with `body: undefined`, because
+      // exactOptionalPropertyTypes distinguishes an absent property from one
+      // explicitly set to undefined — and a GET with a body present-but-undefined
+      // is rejected by fetch at runtime, not just by the compiler.
+      const init: RequestInit = { method, headers, signal: controller.signal }
+      if (body !== undefined) init.body = JSON.stringify(body)
+
+      const response = await this.doFetch(this.baseUrl + path, init)
 
       const text = await response.text()
       if (!response.ok) {
