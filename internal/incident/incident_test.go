@@ -380,10 +380,15 @@ func TestCounts(t *testing.T) {
 	}
 }
 
-// TestResponseCountsWhatNobodyPickedUp is the number this package exists to
-// surface. An alert nobody acknowledged is the failure mode, and a system that
-// cannot count them cannot improve.
-func TestResponseCountsWhatNobodyPickedUp(t *testing.T) {
+// TestResponseSeparatesUnattendedFromNeverAcknowledged pins a distinction that
+// matters on a live dashboard.
+//
+// "Never acknowledged" is a post-event judgement: an incident was closed and
+// nobody had ever picked it up. "Unattended" is the live signal: it is open, past
+// the grace period, and still nobody has. The first version of this counted every
+// open incident as never-acknowledged, which meant an alarm raised four seconds ago
+// was reported as a failure and the number an operator watches never read zero.
+func TestResponseSeparatesUnattendedFromNeverAcknowledged(t *testing.T) {
 	board, c := newBoard(t)
 
 	// Two acknowledged promptly, one ignored entirely.
@@ -419,8 +424,13 @@ func TestResponseCountsWhatNobodyPickedUp(t *testing.T) {
 	if response.Acked != 2 {
 		t.Errorf("acked=%d, want 2", response.Acked)
 	}
-	if response.NeverAcked != 1 {
-		t.Errorf("never acknowledged=%d, want 1", response.NeverAcked)
+	// Still open, so it is unattended rather than never acknowledged: nobody has
+	// closed the book on it yet.
+	if response.NeverAcked != 0 {
+		t.Errorf("never acknowledged=%d, want 0 while the incident is still open", response.NeverAcked)
+	}
+	if response.Unattended != 1 {
+		t.Errorf("unattended=%d, want 1", response.Unattended)
 	}
 	if response.MedianAckSeconds != 35 {
 		t.Errorf("median ack is %vs, want 35", response.MedianAckSeconds)
@@ -441,8 +451,22 @@ func TestResponseCountsWhatNobodyPickedUp(t *testing.T) {
 	if _, err := board.Transition(cancelled.ID, Transition{Status: Cancelled, Actor: "control", Note: "radio mixup"}); err != nil {
 		t.Fatal(err)
 	}
+	if got := board.Response().NeverAcked; got != 0 {
+		t.Errorf("never acknowledged=%d after a cancellation, want 0", got)
+	}
+
+	// Closing an unacknowledged incident is what makes it never-acknowledged: the
+	// book is shut and nobody ever picked it up.
+	unattended := board.Live()
+	if len(unattended) == 0 {
+		t.Fatal("expected a live incident to close")
+	}
+	if _, err := board.Transition(unattended[len(unattended)-1].ID,
+		Transition{Status: Resolved, Actor: "control"}); err != nil {
+		t.Fatal(err)
+	}
 	if got := board.Response().NeverAcked; got != 1 {
-		t.Errorf("never acknowledged=%d after a cancellation, want 1", got)
+		t.Errorf("never acknowledged=%d after closing an unacknowledged incident, want 1", got)
 	}
 }
 

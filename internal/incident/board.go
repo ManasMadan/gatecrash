@@ -339,6 +339,13 @@ type Counts struct {
 	Info         int `json:"info"`
 }
 
+// unattendedAfter is how long a live incident may go unacknowledged before it
+// counts as unattended.
+//
+// Thirty seconds. Long enough that an operator reaching for the mouse is not
+// reported as a failure, short enough that it is still the same conversation.
+const unattendedAfter = 30 * time.Second
+
 // Counts returns the live-incident summary.
 func (b *Board) Counts() Counts {
 	b.mu.RLock()
@@ -382,10 +389,22 @@ type Response struct {
 	StillOpen int `json:"still_open"`
 	Cancelled int `json:"cancelled"`
 
-	// Never acknowledged. The number that matters, and the reason this struct
-	// exists: an alert nobody picked up is the failure this whole package is
-	// designed to make visible.
+	// NeverAcked counts incidents that reached a terminal state without anybody
+	// ever acknowledging them. This is the post-event number, and it is the reason
+	// this struct exists: an alert that was closed without anybody picking it up is
+	// the failure the whole package is designed to make visible.
+	//
+	// Only closed incidents count. An alarm raised four seconds ago has not been
+	// "never acknowledged", it has not been acknowledged *yet*, and conflating the
+	// two makes the number meaningless on a live dashboard — which is where an
+	// operator is looking at it.
 	NeverAcked int `json:"never_acknowledged"`
+
+	// Unattended counts incidents that are still live and still unacknowledged
+	// past the grace period. This is the live number: it is what an operator should
+	// be looking at during the event, and it excludes the few seconds between a
+	// bouncer pressing a button and somebody reaching for the mouse.
+	Unattended int `json:"unattended"`
 
 	MedianAckSeconds float64 `json:"median_ack_seconds"`
 	WorstAckSeconds  float64 `json:"worst_ack_seconds"`
@@ -397,6 +416,7 @@ func (b *Board) Response() Response {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
+	now := b.now()
 	var out Response
 	var acks, fixes []float64
 
@@ -414,8 +434,22 @@ func (b *Board) Response() Response {
 		if elapsed, ok := i.AcknowledgedAfter(); ok {
 			out.Acked++
 			acks = append(acks, elapsed.Seconds())
-		} else if i.Status != Cancelled {
-			out.NeverAcked++
+		} else {
+			switch {
+			case i.Status == Cancelled:
+				// A cancelled incident is not an unacknowledged one. Counting it as
+				// such would make the metric useless: cancelling is how a false
+				// alarm is closed, and it is already recorded with a reason.
+			case i.Status.Live():
+				// Still open. Only unattended once the grace period has passed —
+				// otherwise every alarm is "unattended" for its first few seconds
+				// and the number an operator watches never reads zero.
+				if now.Sub(i.RaisedAt) > unattendedAfter {
+					out.Unattended++
+				}
+			default:
+				out.NeverAcked++
+			}
 		}
 		if elapsed, ok := i.ResolvedAfter(); ok {
 			fixes = append(fixes, elapsed.Seconds())
