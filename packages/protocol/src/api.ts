@@ -524,6 +524,7 @@ export interface DashboardStats {
     still_open: number
     cancelled: number
     never_acknowledged: number
+    unattended: number
     median_ack_seconds: number
     worst_ack_seconds: number
     median_fix_seconds: number

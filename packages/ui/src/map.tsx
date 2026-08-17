@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { CSSProperties } from 'react'
 import type { Amenity, Point, Route, SeatRef, VenuePlan } from '@gatecrash/protocol'
 
 /**
@@ -42,6 +43,24 @@ export interface VenueMapProps {
   /** Draw individual seats. Off for the dashboard's overview, on for one section. */
   showSeats?: boolean
 
+  /**
+   * Live fullness per zone, as inside-over-capacity. Supplied by the control room,
+   * absent for an attendee.
+   *
+   * A map is the only place occupancy can be read as a shape rather than a number:
+   * "the pit is filling and the arena is not" is one glance here and four rows of a
+   * table anywhere else. Zones with a figure are tinted and carry their count.
+   */
+  occupancy?: Record<string, { inside: number; capacity: number }>
+
+  /**
+   * Label every door rather than only the ones this attendee can use.
+   *
+   * The control room needs to tell North Gate from the bar; an attendee needs the
+   * two doors that concern them and no others. Same map, different question.
+   */
+  labelEveryGate?: boolean
+
   /** Fit the view to this section rather than the whole venue. */
   focusSection?: string
 
@@ -83,6 +102,8 @@ export function VenueMap({
   laterCheckpoints,
   highlightAmenities,
   showSeats = true,
+  occupancy,
+  labelEveryGate = false,
   focusSection,
   className,
 }: VenueMapProps) {
@@ -99,6 +120,12 @@ export function VenueMap({
     )
   }
 
+  // How deeply each zone is nested, used to stagger the area labels. A pit sits
+  // flush against the front of the arena that contains it — that is what a pit is —
+  // so their two labels would otherwise be drawn on the same line, on top of each
+  // other. Offsetting by depth separates them without moving either zone.
+  const depth = useMemo(() => zoneDepths(plan), [plan])
+
   const allowed = allowedZones ? new Set(allowedZones) : undefined
   const open = new Set(openCheckpoints ?? [])
   const later = new Set(laterCheckpoints ?? [])
@@ -109,7 +136,13 @@ export function VenueMap({
   // Label sizes are derived from the view rather than fixed, so text stays legible
   // whether the whole venue or one block is on screen.
   const scale = viewBox.width / map.width
-  const label = { section: 3 * scale, gate: 2.2 * scale, stage: 4 * scale, amenity: 3 * scale }
+  const label = {
+    section: 3 * scale,
+    gate: 2.2 * scale,
+    stage: 4 * scale,
+    amenity: 3 * scale,
+    zone: 2.4 * scale,
+  }
 
   return (
     <svg
@@ -125,20 +158,36 @@ export function VenueMap({
 
       {/* Zones. Drawn first and faintest: they are the reason the rest makes sense
           and they are not what anybody is looking for. */}
-      {plan.zones.map((zone) =>
-        zone.shape && zone.shape.length >= 3 ? (
-          <polygon
-            key={zone.code}
-            className={
-              allowed && !allowed.has(zone.code)
-                ? 'gc-map__zone gc-map__zone--forbidden'
-                : 'gc-map__zone'
-            }
-            points={toPoints(zone.shape)}
-            style={zone.colour ? { fill: zone.colour, fillOpacity: 0.1 } : undefined}
-          />
-        ) : null,
-      )}
+      {plan.zones.map((zone) => {
+        if (!zone.shape || zone.shape.length < 3) return null
+
+        const forbidden = allowed && !allowed.has(zone.code)
+        const load = occupancy?.[zone.code]
+        const level = load && load.capacity > 0 ? load.inside / load.capacity : null
+
+        return (
+          <g key={zone.code}>
+            <polygon
+              className={forbidden ? 'gc-map__zone gc-map__zone--forbidden' : 'gc-map__zone'}
+              points={toPoints(zone.shape)}
+              style={fillFor(zone.colour, level)}
+            />
+            {/* Named along the top edge rather than at the centre, because the
+                centre is where the seat blocks are and two labels on one spot is
+                worse than none. */}
+            <text
+              className="gc-map__zone-label"
+              x={topLeft(zone.shape).x + 1.5}
+              y={topLeft(zone.shape).y + label.zone * (1 + 0.9 * (depth.get(zone.code) ?? 0)) + 0.5}
+              fontSize={label.zone}
+            >
+              {zone.name}
+              {load ? ` · ${load.inside.toLocaleString()}` : ''}
+              {load && load.capacity > 0 ? ` / ${load.capacity.toLocaleString()}` : ''}
+            </text>
+          </g>
+        )
+      })}
 
       {map.stage && map.stage.length >= 3 ? (
         <g>
@@ -261,7 +310,7 @@ export function VenueMap({
           : later.has(checkpoint.code)
             ? 'gc-map__gate gc-map__gate--later'
             : 'gc-map__gate'
-        const notable = open.has(checkpoint.code) || later.has(checkpoint.code)
+        const notable = labelEveryGate || open.has(checkpoint.code) || later.has(checkpoint.code)
 
         return (
           <g key={checkpoint.code}>
@@ -296,6 +345,52 @@ export function VenueMap({
       ) : null}
     </svg>
   )
+}
+
+/**
+ * The tint for one zone.
+ *
+ * Occupancy is the reason to colour a zone at all, so it wins over the organizer's
+ * signage colour when both are present: an operator looking at a map during a show
+ * is asking how full the pit is, not what colour its wristbands are. The thresholds
+ * are deliberately coarse — under 70% is fine, 70–90% is worth watching, over 90%
+ * needs a decision — because a continuous gradient reads as "somewhat busy" at
+ * every value and prompts nothing.
+ */
+function fillFor(colour: string | undefined, level: number | null): CSSProperties | undefined {
+  if (level !== null) {
+    const fill =
+      level >= 0.9 ? 'var(--gc-deny)' : level >= 0.7 ? 'var(--gc-warning)' : 'var(--gc-admit)'
+    // Floored so an empty zone is still visible as a zone, capped so a full one
+    // never becomes an unreadable block of colour with a label on top.
+    return { fill, fillOpacity: 0.08 + Math.min(level, 1) * 0.24 }
+  }
+  return colour ? { fill: colour, fillOpacity: 0.1 } : undefined
+}
+
+/** Nesting depth per zone, for staggering labels. Cycles cannot happen — Compile
+ * rejects them — but the guard costs nothing and a hung render is unforgivable. */
+function zoneDepths(plan: VenuePlan): Map<string, number> {
+  const parents = new Map(plan.zones.map((zone) => [zone.code, zone.parent]))
+  const out = new Map<string, number>()
+  for (const zone of plan.zones) {
+    let steps = 0
+    let at = zone.parent
+    while (at && steps < plan.zones.length) {
+      steps += 1
+      at = parents.get(at)
+    }
+    out.set(zone.code, steps)
+  }
+  return out
+}
+
+/** The top-left corner of a polygon, for hanging a label off. */
+function topLeft(shape: Point[]): Point {
+  return {
+    x: Math.min(...shape.map((point) => point.x)),
+    y: Math.min(...shape.map((point) => point.y)),
+  }
 }
 
 /** Indexes walk-graph nodes by id, for drawing the route. */
