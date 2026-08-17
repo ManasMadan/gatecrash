@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/netip"
@@ -217,6 +218,36 @@ func open(ctx context.Context, cfg config.Config, log *slog.Logger) (*box, error
 	log.Info("manifest loaded", "tickets", total, "digest", digest,
 		"zones", len(body.Venue.Zones), "checkpoints", len(body.Venue.Checkpoints))
 
+	// Rebuild the live picture from the log.
+	//
+	// The tracker is in memory and the box is expected to lose power, so without
+	// this a reboot brings the dashboard back reading "Inside 0" with the field
+	// full — the redemptions are safe in SQLite, but the occupancy number a safety
+	// officer reads off the wall has been silently reset. A wrong number that looks
+	// authoritative is worse than a missing one.
+	//
+	// One indexed pass at boot, before the listeners are up, so no scan can
+	// interleave with the replay and be counted twice.
+	if history, err := opened.DecisionHistory(ctx); err != nil {
+		// Not fatal. A box that refuses to boot because it could not rebuild a
+		// display number is a box that has turned a cosmetic problem into a closed
+		// gate. The counts start from zero and the log says why.
+		log.Error("rebuilding the live picture", "error", err)
+	} else {
+		for _, result := range history {
+			// The zone comes from the venue plan rather than the log, so a replay
+			// and a live scan derive it the same way. See DecisionHistory.
+			if cp, ok := compiled.Checkpoint(result.Checkpoint); ok {
+				result.Zone = cp.Zone
+			}
+			b.stats.Rehydrate(result)
+		}
+		if len(history) > 0 {
+			log.Info("live picture rebuilt", "decisions", len(history),
+				"inside", b.stats.Snapshot().Inside)
+		}
+	}
+
 	b.board = incident.NewBoard(incident.BoardConfig{
 		Venue: compiled,
 		Persist: func(i incident.Incident) {
@@ -259,7 +290,7 @@ func open(ctx context.Context, cfg config.Config, log *slog.Logger) (*box, error
 
 	b.adminToken = cfg.AdminToken
 	if b.adminToken == "" {
-		if b.adminToken, err = randomToken(); err != nil {
+		if b.adminToken, err = b.persistedAdminToken(); err != nil {
 			return nil, err
 		}
 	}
@@ -417,6 +448,43 @@ func (b *box) enrollSecret() ([]byte, error) {
 	}
 	b.log.Info("generated a new enrollment secret", "path", path)
 	return secret, nil
+}
+
+// persistedAdminToken loads the dashboard token from the data directory, minting
+// one on first boot.
+//
+// It has to survive a restart. The box is a Raspberry Pi in a cupboard behind a
+// bar, and losing power is a designed-for event rather than an exceptional one — so
+// a token regenerated on every boot means a power cut signs out every dashboard on
+// the wall and leaves the replacement in a log file nobody at the desk can reach.
+// Persisting it makes a reboot invisible to the control room, which is the whole
+// point of a box that recovers on its own.
+//
+// Still never in the repo and never a default: it is minted from the system CSPRNG
+// on first boot, kept 0600 in the data directory, and printed at boot so the
+// organizer can pick it up. Rotating it is deleting the file, and setting
+// GATECRASH_ADMIN_TOKEN overrides all of this.
+func (b *box) persistedAdminToken() (string, error) {
+	path := filepath.Join(b.cfg.DataDir, "admin-token")
+	if raw, err := os.ReadFile(path); err == nil {
+		if token := strings.TrimSpace(string(raw)); token != "" {
+			return token, nil
+		}
+		// An empty file is a truncated write from a power cut mid-boot. Mint a new
+		// one rather than booting with no usable dashboard.
+		b.log.Warn("admin token file was empty, minting a new one", "path", path)
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return "", fmt.Errorf("reading %s: %w", path, err)
+	}
+
+	token, err := randomToken()
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, []byte(token+"\n"), 0o600); err != nil {
+		return "", fmt.Errorf("writing %s: %w", path, err)
+	}
+	return token, nil
 }
 
 // boxKey loads or creates the box's own signing key, used for the attendance

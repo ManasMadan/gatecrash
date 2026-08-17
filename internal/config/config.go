@@ -83,9 +83,11 @@ type Config struct {
 	// says so loudly.
 	OrganizerFingerprint string `json:"organizer_fingerprint,omitempty"`
 
-	// AdminToken authenticates the dashboard. Empty means generate one at boot and
-	// print it, which is the right default: a box with a hardcoded token is a box
-	// with no token.
+	// AdminToken authenticates the dashboard. Empty means mint one on first boot,
+	// keep it 0600 in the data directory and print it at every boot — which is the
+	// right default: a box with a hardcoded token is a box with no token, and a box
+	// that mints a fresh one on every boot signs out the control room every time the
+	// power flickers.
 	AdminToken string `json:"-"`
 
 	// Discovery toggles.
