@@ -14,6 +14,7 @@ import (
 	"github.com/ManasMadan/gatecrash/internal/incident"
 	"github.com/ManasMadan/gatecrash/internal/merkle"
 	"github.com/ManasMadan/gatecrash/internal/ticket"
+	"github.com/ManasMadan/gatecrash/internal/venue"
 )
 
 // deltaBatchLimit caps how many redemptions one delta query returns.
@@ -171,6 +172,47 @@ func (s *Store) AuditRows(ctx context.Context, from, to uint64) ([]audit.Record,
 		r.Offline = offline != 0
 		copy(r.PrevHash[:], prevHash)
 		copy(r.RowHash[:], rowHash)
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// DecisionHistory returns every decision in the log, joined to the tier of the
+// ticket it was about, in the order it was made.
+//
+// This is what a restarted box replays to rebuild the live picture. It exists as
+// one query rather than a loop over AuditRows doing a point lookup per row because
+// the caller needs the tier for turnout, and fifty thousand point lookups at boot
+// on a Raspberry Pi is a minute of the event where the dashboard is wrong.
+//
+// Zone is deliberately left unset: the audit log does not record it, and the zone a
+// checkpoint leads to belongs to the venue plan. The caller fills it from the
+// compiled venue, which is the same place the engine takes it from — so a replay
+// and a live scan agree by construction rather than by a second copy of the rule.
+func (s *Store) DecisionHistory(ctx context.Context) ([]engine.Result, error) {
+	rows, err := s.reader.QueryContext(ctx, `
+		SELECT a.checkpoint, a.occurrence, a.device, a.verdict, a.direction,
+		       a.section, a.row_label, a.seat, COALESCE(t.tier, '')
+		FROM audit_log a LEFT JOIN tickets t ON t.id = a.ticket_id
+		ORDER BY a.seq`)
+	if err != nil {
+		return nil, fmt.Errorf("store: reading decision history: %w", err)
+	}
+	defer rows.Close()
+
+	var out []engine.Result
+	for rows.Next() {
+		var (
+			r       engine.Result
+			verdict string
+			tier    string
+		)
+		if err := rows.Scan(&r.Checkpoint, &r.Occurrence, &r.Device, &verdict, &r.Direction,
+			&r.Seat.Section, &r.Seat.Row, &r.Seat.Seat, &tier); err != nil {
+			return nil, fmt.Errorf("store: scanning decision history: %w", err)
+		}
+		r.Verdict = engine.Verdict(verdict)
+		r.Tier = venue.TierCode(tier)
 		out = append(out, r)
 	}
 	return out, rows.Err()
