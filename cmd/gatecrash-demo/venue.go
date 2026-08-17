@@ -20,18 +20,24 @@ import (
 func (d *demo) manifestBody() manifest.Body {
 	plan := venue.Plan{
 		Zones: []venue.Zone{
-			{Code: "perimeter", Name: "Festival Ground", Kind: venue.ZonePerimeter, Capacity: 3000},
-			{Code: "concourse", Name: "Concourse", Kind: venue.ZoneConcourse, Parent: "perimeter"},
+			{Code: "perimeter", Name: "Festival Ground", Kind: venue.ZonePerimeter, Capacity: 3000,
+				Shape: venue.Polygon{{X: 2, Y: 2}, {X: 118, Y: 2}, {X: 118, Y: 108}, {X: 2, Y: 108}}},
+			{Code: "concourse", Name: "Concourse", Kind: venue.ZoneConcourse, Parent: "perimeter",
+				Shape: venue.Polygon{{X: 4, Y: 84}, {X: 116, Y: 84}, {X: 116, Y: 106}, {X: 4, Y: 106}}},
 			// Restricted, so a grant on the perimeter does not silently include
 			// the thing people paid for.
-			{Code: "arena", Name: "Arena", Kind: venue.ZoneArena, Parent: "perimeter", Restricted: true},
-			{Code: "pit", Name: "Front Pit", Kind: venue.ZonePit, Parent: "arena", Capacity: 150, Restricted: true},
-			{Code: "backstage", Name: "Backstage", Kind: venue.ZoneBackstage, Parent: "perimeter", Capacity: 40, Restricted: true},
+			{Code: "arena", Name: "Arena", Kind: venue.ZoneArena, Parent: "perimeter", Restricted: true,
+				Shape: venue.Polygon{{X: 26, Y: 20}, {X: 94, Y: 20}, {X: 94, Y: 82}, {X: 26, Y: 82}}},
+			{Code: "pit", Name: "Front Pit", Kind: venue.ZonePit, Parent: "arena", Capacity: 150, Restricted: true,
+				Shape: venue.Polygon{{X: 42, Y: 21}, {X: 78, Y: 21}, {X: 78, Y: 26}, {X: 42, Y: 26}}},
+			{Code: "backstage", Name: "Backstage", Kind: venue.ZoneBackstage, Parent: "perimeter", Capacity: 40, Restricted: true,
+				Shape: venue.Polygon{{X: 84, Y: 4}, {X: 116, Y: 4}, {X: 116, Y: 18}, {X: 84, Y: 18}}},
 		},
 		Sections: []venue.Section{
 			{
 				Code: "block-a", Name: "Block A", Kind: venue.SectionSeated, Zone: "arena",
 				Entrances: []venue.CheckpointCode{"portal-a"}, Node: "n-portal-a",
+				Shape: venue.Polygon{{X: 28, Y: 50}, {X: 92, Y: 50}, {X: 92, Y: 68}, {X: 28, Y: 68}},
 				Rows: []venue.Row{
 					{Label: "A", Start: venue.Point{X: 30, Y: 55}, End: venue.Point{X: 90, Y: 55}, Curve: 4, Aisle: "n-aisle-a", Seats: numbered(12)},
 					{Label: "B", Start: venue.Point{X: 30, Y: 62}, End: venue.Point{X: 90, Y: 62}, Curve: 4, Aisle: "n-aisle-a", Seats: numbered(12)},
@@ -40,12 +46,16 @@ func (d *demo) manifestBody() manifest.Body {
 			{
 				Code: "block-b", Name: "Block B", Kind: venue.SectionSeated, Zone: "arena",
 				Entrances: []venue.CheckpointCode{"portal-b"}, Node: "n-portal-b",
+				// Further from the stage than Block A, because that is what "upper
+				// tier, behind the mix position" means on the ground.
+				Shape:    venue.Polygon{{X: 28, Y: 70}, {X: 92, Y: 70}, {X: 92, Y: 80}, {X: 28, Y: 80}},
 				ViewNote: "Upper tier, behind the mix position",
 				Rows: []venue.Row{
-					{Label: "A", Start: venue.Point{X: 30, Y: 30}, End: venue.Point{X: 90, Y: 30}, Curve: 3, Aisle: "n-aisle-b", Seats: numbered(12)},
+					{Label: "A", Start: venue.Point{X: 30, Y: 75}, End: venue.Point{X: 90, Y: 75}, Curve: 3, Aisle: "n-aisle-b", Seats: numbered(12)},
 				},
 			},
-			{Code: "golden-circle", Name: "Golden Circle", Kind: venue.SectionStanding, Zone: "pit", Capacity: 150, Node: "n-pit"},
+			{Code: "golden-circle", Name: "Golden Circle", Kind: venue.SectionStanding, Zone: "pit", Capacity: 150, Node: "n-pit",
+				Shape: venue.Polygon{{X: 43, Y: 21}, {X: 77, Y: 21}, {X: 77, Y: 25}, {X: 43, Y: 25}}},
 		},
 		Checkpoints: []venue.Checkpoint{
 			{Code: "gate-north", Name: "North Gate", Zone: "perimeter", Direction: venue.DirectionIn, Policy: venue.PolicyOnce, Lane: "1", Node: "n-gate-north", OpensAt: doors, ClosesAt: doors.Add(7 * time.Hour)},
@@ -86,7 +96,7 @@ func (d *demo) manifestBody() manifest.Body {
 				{ID: "n-lift", Kind: venue.NodeLift, Name: "the upper landing", Zone: "arena", Position: venue.Point{X: 100, Y: 70}, Level: 1},
 				{ID: "n-portal-b", Kind: venue.NodePortal, Name: "Portal B", Zone: "arena", Position: venue.Point{X: 60, Y: 42}, Level: 1},
 				{ID: "n-aisle-a", Kind: venue.NodeAisle, Name: "the Block A aisle", Zone: "arena", Position: venue.Point{X: 28, Y: 58}},
-				{ID: "n-aisle-b", Kind: venue.NodeAisle, Name: "the Block B aisle", Zone: "arena", Position: venue.Point{X: 28, Y: 32}, Level: 1},
+				{ID: "n-aisle-b", Kind: venue.NodeAisle, Name: "the Block B aisle", Zone: "arena", Position: venue.Point{X: 28, Y: 76}, Level: 1},
 				{ID: "n-pit", Kind: venue.NodeSeatBlock, Name: "the pit", Zone: "pit", Position: venue.Point{X: 60, Y: 25}},
 			},
 			Edges: []venue.Edge{

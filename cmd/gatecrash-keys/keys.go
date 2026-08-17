@@ -98,18 +98,32 @@ func starterVenue(args []string) error {
 	}
 
 	plan := venue.Plan{
+		// Every zone carries a footprint. Shape is optional in the schema — a plan
+		// with no geometry still runs an event — but a starter plan without it
+		// renders as an empty box with labels floating in it, which teaches the
+		// wrong lesson about what the map is for. These are laid out in the same
+		// 120x110 grid as Map below: stage at the top, arena in front of it, pit
+		// against the barrier, concourse along the bottom where the gates are.
 		Zones: []venue.Zone{
-			{Code: "perimeter", Name: "Festival Ground", Kind: venue.ZonePerimeter, Capacity: 2000},
-			{Code: "concourse", Name: "Concourse", Kind: venue.ZoneConcourse, Parent: "perimeter"},
+			{Code: "perimeter", Name: "Festival Ground", Kind: venue.ZonePerimeter, Capacity: 2000,
+				Shape: venue.Polygon{{X: 2, Y: 2}, {X: 118, Y: 2}, {X: 118, Y: 108}, {X: 2, Y: 108}}},
+			{Code: "concourse", Name: "Concourse", Kind: venue.ZoneConcourse, Parent: "perimeter",
+				Shape: venue.Polygon{{X: 4, Y: 84}, {X: 116, Y: 84}, {X: 116, Y: 106}, {X: 4, Y: 106}}},
 			// Restricted, so a grant on the perimeter does not quietly include it.
 			// This is the flag that stops nesting from becoming a security hole.
-			{Code: "arena", Name: "Arena", Kind: venue.ZoneArena, Parent: "perimeter", Restricted: true},
-			{Code: "pit", Name: "Front Pit", Kind: venue.ZonePit, Parent: "arena", Capacity: 200, Restricted: true},
+			{Code: "arena", Name: "Arena", Kind: venue.ZoneArena, Parent: "perimeter", Restricted: true,
+				Shape: venue.Polygon{{X: 26, Y: 20}, {X: 94, Y: 20}, {X: 94, Y: 82}, {X: 26, Y: 82}}},
+			{Code: "pit", Name: "Front Pit", Kind: venue.ZonePit, Parent: "arena", Capacity: 200, Restricted: true,
+				Shape: venue.Polygon{{X: 42, Y: 21}, {X: 78, Y: 21}, {X: 78, Y: 42}, {X: 42, Y: 42}}},
 		},
 		Sections: []venue.Section{
 			{
 				Code: "block-a", Name: "Block A", Kind: venue.SectionSeated, Zone: "arena",
 				Entrances: []venue.CheckpointCode{"portal-a"}, Node: "n-portal-a",
+				// The block's own outline, wide enough to contain the two curved
+				// rows below. Drawn behind the seats so a block reads as a block
+				// from across the concourse rather than as a scatter of dots.
+				Shape: venue.Polygon{{X: 28, Y: 50}, {X: 92, Y: 50}, {X: 92, Y: 68}, {X: 28, Y: 68}},
 				Rows: []venue.Row{
 					// Authored with geometry rather than per-seat coordinates: a
 					// start, an end, a curve and a seat count is how a real stand
@@ -118,12 +132,16 @@ func starterVenue(args []string) error {
 					{Label: "B", Start: venue.Point{X: 30, Y: 62}, End: venue.Point{X: 90, Y: 62}, Curve: 4, Aisle: "n-aisle-a", Seats: seats(12)},
 				},
 			},
-			{Code: "golden-circle", Name: "Golden Circle", Kind: venue.SectionStanding, Zone: "pit", Capacity: 200, Node: "n-pit"},
+			// Standing, so it has a footprint and no seats. A standing section with
+			// no shape is invisible on the map, which is the one part of the plan an
+			// attendee in the pit most needs to recognise.
+			{Code: "golden-circle", Name: "Golden Circle", Kind: venue.SectionStanding, Zone: "pit", Capacity: 200, Node: "n-pit",
+				Shape: venue.Polygon{{X: 44, Y: 23}, {X: 76, Y: 23}, {X: 76, Y: 40}, {X: 44, Y: 40}}},
 		},
 		Checkpoints: []venue.Checkpoint{
 			{Code: "gate-north", Name: "North Gate", Zone: "perimeter", Direction: venue.DirectionIn, Policy: venue.PolicyOnce, Lane: "1", Node: "n-gate-north", Position: venue.Point{X: 15, Y: 100}},
 			{Code: "gate-south", Name: "South Gate", Zone: "perimeter", Direction: venue.DirectionIn, Policy: venue.PolicyOnce, Lane: "1", Node: "n-gate-south", Position: venue.Point{X: 105, Y: 100}},
-			{Code: "gate-exit", Name: "Exit", Zone: "perimeter", Direction: venue.DirectionOut, Policy: venue.PolicyReEntry, Node: "n-gate-north"},
+			{Code: "gate-exit", Name: "Exit", Zone: "perimeter", Direction: venue.DirectionOut, Policy: venue.PolicyReEntry, Node: "n-gate-north", Position: venue.Point{X: 35, Y: 100}},
 			// Section-restricted: this portal serves Block A and nothing else, which
 			// is what a stadium vomitory is.
 			{Code: "portal-a", Name: "Portal A", Zone: "arena", Direction: venue.DirectionIn, Policy: venue.PolicyOnce, Requires: []venue.ZoneCode{"perimeter"}, Sections: []venue.SectionCode{"block-a"}, Node: "n-portal-a", Position: venue.Point{X: 60, Y: 75}},
@@ -133,8 +151,8 @@ func starterVenue(args []string) error {
 			// make, because it only shows up when somebody is standing at a gate.
 			{Code: "arena-general", Name: "Arena Entrance", Zone: "arena", Direction: venue.DirectionIn, Policy: venue.PolicyOnce, Requires: []venue.ZoneCode{"perimeter"}, Node: "n-portal-a", Position: venue.Point{X: 40, Y: 75}},
 			{Code: "pit-gate", Name: "Pit Wristband", Zone: "pit", Direction: venue.DirectionIn, Policy: venue.PolicyOnce, Requires: []venue.ZoneCode{"arena"}, Tiers: []venue.TierCode{"vip"}, Node: "n-pit", Position: venue.Point{X: 60, Y: 40}},
-			{Code: "food-court", Name: "Food Court", Zone: "concourse", Direction: venue.DirectionBoth, Policy: venue.PolicyReEntry, Requires: []venue.ZoneCode{"perimeter"}, Node: "n-concourse"},
-			{Code: "bar-token", Name: "Bar Token", Zone: "concourse", Direction: venue.DirectionIn, Policy: venue.PolicyCounted, CountLimit: 2, Requires: []venue.ZoneCode{"perimeter"}, Node: "n-concourse"},
+			{Code: "food-court", Name: "Food Court", Zone: "concourse", Direction: venue.DirectionBoth, Policy: venue.PolicyReEntry, Requires: []venue.ZoneCode{"perimeter"}, Node: "n-concourse", Position: venue.Point{X: 70, Y: 88}},
+			{Code: "bar-token", Name: "Bar Token", Zone: "concourse", Direction: venue.DirectionIn, Policy: venue.PolicyCounted, CountLimit: 2, Requires: []venue.ZoneCode{"perimeter"}, Node: "n-concourse", Position: venue.Point{X: 95, Y: 88}},
 		},
 		Tiers: []venue.Tier{
 			{Code: "ga", Name: "General Admission", Zones: []venue.ZoneCode{"perimeter", "arena"}, Colour: "#3B82F6", Priority: 10},
