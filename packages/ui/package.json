@@ -12,7 +12,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./tokens.css": "./src/tokens.css"
+    "./tokens.css": "./src/tokens.css",
+    "./verdict.css": "./src/verdict.css",
+    "./map.css": "./src/map.css"
   },
   "files": [
     "dist",
@@ -39,7 +41,9 @@
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "tsup": "^8.5.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
