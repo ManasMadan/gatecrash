@@ -1,0 +1,17 @@
+{
+  "name": "@gatecrash/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The documentation site. Never published.",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "test": "echo \"no tests\" && exit 0",
+    "typecheck": "echo \"no typecheck\" && exit 0"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@gatecrash/bench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The load rig: replays a recorded scan trace against a real box and publishes percentiles. Never published.",
+  "type": "module",
+  "scripts": {
+    "bench": "node bench.mjs",
+    "build": "echo \"nothing to build\" && exit 0",
+    "test": "echo \"no tests\" && exit 0",
+    "typecheck": "echo \"no typecheck\" && exit 0"
+  }
+}

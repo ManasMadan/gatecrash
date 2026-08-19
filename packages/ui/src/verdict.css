@@ -1,0 +1,235 @@
+/*
+ * The verdict screen.
+ *
+ * This is the most important surface in the product and the one with the least
+ * conventional design. It is read at arm's length, at night, in a crowd, by
+ * somebody who is looking at a queue rather than at the phone. So:
+ *
+ * - The whole viewport is the signal. Not a card, not a toast — the entire screen
+ *   floods with one colour, because that is visible in peripheral vision and a
+ *   toast is not.
+ * - The glyph is 40% of the smaller viewport dimension. A tick that size is
+ *   readable from three metres away by somebody who is not looking directly at it.
+ * - The one word is bigger than anything else. "IN" and "USED" are distinguishable
+ *   at a glance in a way that two sentences never are.
+ * - The tier colour is a solid band the guard matches against a physical wristband
+ *   without reading anything at all, which is the only check that works reliably at
+ *   two in the morning.
+ */
+
+.gc-verdict {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: max(var(--gc-pad), env(safe-area-inset-top)) var(--gc-pad)
+    max(var(--gc-pad), env(safe-area-inset-bottom));
+  color: #fff;
+  z-index: 100;
+  animation: gc-verdict-in var(--gc-quick) ease-out;
+}
+
+/* A brief flash on entry: the eye catches a change in luminance far faster than it
+ * reads anything, so the screen announces itself before it is looked at. */
+@keyframes gc-verdict-in {
+  from {
+    filter: brightness(2.4);
+  }
+  to {
+    filter: brightness(1);
+  }
+}
+
+.gc-verdict[data-severity='admit'] {
+  background: linear-gradient(160deg, var(--gc-admit) 0%, var(--gc-admit-deep) 100%);
+}
+.gc-verdict[data-severity='deny'] {
+  background: linear-gradient(160deg, var(--gc-deny) 0%, var(--gc-deny-deep) 100%);
+}
+.gc-verdict[data-severity='redirect'] {
+  background: linear-gradient(160deg, var(--gc-redirect) 0%, var(--gc-redirect-deep) 100%);
+  /* Amber on white is unreadable; amber with near-black text is the road-sign
+   * combination and it works in sunlight. */
+  color: #1a1000;
+}
+
+/* The tier band. A solid stripe of the wristband's own colour across the top, so a
+ * guard can match screen to wrist without reading. */
+.gc-verdict__tier-band {
+  height: 14px;
+  border-radius: 999px;
+  margin-bottom: var(--gc-gap);
+  background: var(--gc-tier-colour, transparent);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 25%);
+}
+
+.gc-verdict__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gc-gap);
+  font-size: var(--gc-small);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.gc-verdict__body {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 0.25rem;
+  min-height: 0;
+}
+
+.gc-verdict__glyph {
+  font-size: var(--gc-glyph);
+  line-height: 0.85;
+  font-weight: 700;
+  /* The glyph is the redundant channel for anybody who cannot separate the red
+   * screen from the green one, so it must not be decorative. */
+  text-shadow: 0 4px 24px rgb(0 0 0 / 25%);
+}
+
+.gc-verdict__headline {
+  font-size: var(--gc-verdict);
+  line-height: 0.85;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  /* Long verdict words like "NOT LISTED" have to shrink rather than wrap: a
+   * two-line headline reads as two words at a glance. */
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.gc-verdict__detail {
+  font-size: var(--gc-huge);
+  font-weight: 600;
+  line-height: 1.15;
+  max-width: 22ch;
+  opacity: 0.95;
+}
+
+/* The seat. On an admit this is what an usher acts on, so it is the second largest
+ * thing on the screen. */
+.gc-verdict__seat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: var(--gc-gap);
+  padding: 0.5rem 1rem;
+  border-radius: var(--gc-radius-lg);
+  background: rgb(0 0 0 / 22%);
+  font-size: var(--gc-huge);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.gc-verdict__tier {
+  font-size: var(--gc-large);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 22%);
+}
+
+/* Evidence, for a refusal: which gate, how long ago. Small, because it is read
+ * only when somebody argues — but present, because that is when it decides the
+ * argument. */
+.gc-verdict__evidence {
+  font-size: var(--gc-body);
+  font-weight: 600;
+  opacity: 0.9;
+  margin-top: var(--gc-gap);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--gc-radius);
+  background: rgb(0 0 0 / 20%);
+}
+
+/* Where to send them. The whole point of the amber screen. */
+.gc-verdict__redirect {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--gc-gap);
+}
+
+.gc-verdict__redirect-label {
+  font-size: var(--gc-small);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.gc-verdict__redirect-name {
+  font-size: var(--gc-huge);
+  font-weight: 800;
+}
+
+.gc-verdict__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gc-gap);
+  font-size: var(--gc-micro);
+  font-weight: 600;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The dismiss target is the whole screen. Nobody aims at a button while watching a
+ * queue. */
+.gc-verdict__dismiss {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  background: none;
+  border: 0;
+}
+
+/* A countdown hairline, so staff can see the screen is about to clear rather than
+ * wondering whether it has frozen. */
+.gc-verdict__timer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgb(255 255 255 / 55%);
+  animation: gc-verdict-timer linear forwards;
+}
+
+@keyframes gc-verdict-timer {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* A flag badge, for a double use the box detected after a partition. Rare and worth
+ * interrupting for. */
+.gc-verdict__flag {
+  margin-top: var(--gc-gap);
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--gc-radius);
+  background: #000;
+  color: #fff;
+  font-size: var(--gc-small);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* An offline badge, for a verdict the scanner decided from its own mirror. Staff
+ * must be able to tell a local decision from the box's. */
+.gc-verdict__offline {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
