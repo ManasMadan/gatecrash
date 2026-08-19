@@ -47,7 +47,13 @@ interface Note {
  * rather than to be pleasant. Around 900 Hz to 1.6 kHz is where a phone speaker is
  * loudest and where a bass-heavy room has the least masking.
  */
-const CUES: Record<Severity, { notes: Note[]; vibrate: number[] }> = {
+/** One verdict's sound and buzz. */
+interface Cue {
+  notes: Note[]
+  vibrate: number[]
+}
+
+const CUES: Record<Severity, Cue> = {
   admit: {
     notes: [
       { hz: 1050, duration: 0.05, at: 0, type: 'sine' },
@@ -73,6 +79,9 @@ const CUES: Record<Severity, { notes: Note[]; vibrate: number[] }> = {
   },
 }
 
+/** The cue used for a severity this build does not recognise. */
+const DENY_CUE: Cue = CUES.deny
+
 /**
  * Plays the cue for a verdict.
  *
@@ -83,7 +92,12 @@ const CUES: Record<Severity, { notes: Note[]; vibrate: number[] }> = {
  */
 export function playVerdict(severity: Severity, options: FeedbackOptions = {}): void {
   const { sound = true, haptics = true, volume = 0.9 } = options
-  const cue = CUES[severity] ?? CUES.deny
+
+  // A severity this build has never heard of falls back to the refusal cue, which
+  // is the only safe default: a newer box may send something older scanner code
+  // does not know, and staying silent would read as "the scanner did not register
+  // the scan".
+  const cue: Cue = CUES[severity] ?? DENY_CUE
 
   if (haptics) vibrate(cue.vibrate)
   if (sound) beep(cue.notes, volume)
