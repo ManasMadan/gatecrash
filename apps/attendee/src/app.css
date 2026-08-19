@@ -1,0 +1,411 @@
+/*
+ * The attendee wallet.
+ *
+ * The one surface in the product that follows the phone's own light or dark
+ * setting, because it is read in a pocket, in a queue, indoors and outdoors, and
+ * fighting the system preference there is just rude.
+ *
+ * Its whole job is to answer three questions without being asked: what is my
+ * ticket, where do I go, and where is the nearest toilet. Everything else is
+ * secondary, and the layout says so.
+ */
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.wallet {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gc-pad);
+  padding: max(var(--gc-pad), env(safe-area-inset-top)) var(--gc-pad)
+    max(var(--gc-pad), env(safe-area-inset-bottom));
+  max-width: 32rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.masthead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gc-gap);
+}
+
+.masthead h1 {
+  font-size: var(--gc-large);
+  font-weight: 800;
+  margin: 0;
+}
+
+.masthead__venue {
+  color: var(--gc-text-dim);
+  font-size: var(--gc-small);
+}
+
+/* The ticket itself. A card that is mostly QR, because that is the only part
+ * anybody at a gate is going to look at. */
+.ticket {
+  background: var(--gc-surface);
+  border: 1px solid var(--gc-line);
+  border-radius: var(--gc-radius-lg);
+  overflow: hidden;
+}
+
+.ticket__band {
+  height: 10px;
+  background: var(--gc-tier-colour, var(--gc-accent));
+}
+
+.ticket__body {
+  padding: var(--gc-pad);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gc-gap);
+}
+
+/*
+ * The QR. White-backed and padded even in dark mode, always: a dark-on-dark QR is
+ * unreadable to every scanner ever made, and this is the one place where matching
+ * the theme would break the product.
+ */
+.ticket__qr {
+  background: #fff;
+  padding: 12px;
+  border-radius: var(--gc-radius);
+  line-height: 0;
+}
+
+.ticket__qr canvas,
+.ticket__qr svg {
+  display: block;
+  width: min(68vw, 260px);
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.ticket__tier {
+  font-size: var(--gc-large);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ticket__seat {
+  font-size: var(--gc-huge);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.ticket__seat small {
+  display: block;
+  font-size: var(--gc-small);
+  font-weight: 600;
+  color: var(--gc-text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The rotation countdown. Reassurance rather than instruction: people worry that a
+ * changing code means something is wrong. */
+.ticket__rotation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--gc-micro);
+  color: var(--gc-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticket__rotation-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--gc-line);
+  overflow: hidden;
+}
+
+.ticket__rotation-fill {
+  height: 100%;
+  background: var(--gc-accent);
+  transition: width 1s linear;
+}
+
+.ticket__revoked {
+  background: var(--gc-deny);
+  color: #fff;
+  padding: var(--gc-gap);
+  text-align: center;
+  font-weight: 800;
+}
+
+/* Where to go next. The second most important thing on the screen. */
+.card {
+  background: var(--gc-surface);
+  border: 1px solid var(--gc-line);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-pad);
+}
+
+.card h2 {
+  margin: 0 0 var(--gc-gap);
+  font-size: var(--gc-body);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gc-text-dim);
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gc-gap);
+  padding: var(--gc-gap) 0;
+  border-bottom: 1px solid var(--gc-line);
+}
+
+.step:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.step__marker {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: var(--gc-micro);
+  font-weight: 800;
+  background: var(--gc-accent);
+  color: #fff;
+}
+
+.step__marker[data-state='later'] {
+  background: var(--gc-line);
+  color: var(--gc-text-dim);
+}
+
+.step__what {
+  flex: 1;
+  min-width: 0;
+}
+
+.step__name {
+  font-weight: 700;
+}
+
+.step__hint {
+  font-size: var(--gc-small);
+  color: var(--gc-text-dim);
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+/* Turn-by-turn. Rendered as a list beside the map, because a map is an image and a
+ * list is something a screen reader can read out. */
+.route {
+  list-style: none;
+  margin: var(--gc-gap) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.route li {
+  display: flex;
+  gap: var(--gc-gap);
+  font-size: var(--gc-small);
+  line-height: 1.45;
+}
+
+.route li::before {
+  content: '↳';
+  color: var(--gc-accent);
+  flex: none;
+}
+
+.route__summary {
+  font-size: var(--gc-small);
+  color: var(--gc-text-dim);
+  margin-top: var(--gc-gap);
+}
+
+.map-frame {
+  height: min(60vh, 420px);
+  margin-top: var(--gc-gap);
+}
+
+/* Amenities. The least glamorous panel and the one most used. */
+.amenity {
+  display: flex;
+  align-items: center;
+  gap: var(--gc-gap);
+  padding: var(--gc-gap) 0;
+  border-bottom: 1px solid var(--gc-line);
+  width: 100%;
+  text-align: left;
+}
+
+.amenity:last-child {
+  border-bottom: 0;
+}
+
+.amenity__glyph {
+  font-size: 1.5rem;
+  flex: none;
+}
+
+.amenity__what {
+  flex: 1;
+  min-width: 0;
+}
+
+.amenity__name {
+  font-weight: 700;
+}
+
+.amenity__detail {
+  font-size: var(--gc-small);
+  color: var(--gc-text-dim);
+}
+
+.amenity__closed {
+  color: var(--gc-redirect);
+  font-weight: 700;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--gc-gap);
+}
+
+.chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--gc-line);
+  background: var(--gc-surface-raised);
+  color: var(--gc-text);
+  font-size: var(--gc-small);
+  font-weight: 700;
+  min-height: 40px;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--gc-accent);
+  border-color: var(--gc-accent);
+  color: #fff;
+}
+
+/* Announcements. Priority ones are loud because "the last train is in twenty
+ * minutes" is worth interrupting for. */
+.announcement {
+  border-left: 4px solid var(--gc-accent);
+  padding: var(--gc-gap);
+  background: var(--gc-surface-raised);
+  border-radius: var(--gc-radius);
+  margin-bottom: var(--gc-gap);
+}
+
+.announcement[data-priority='true'] {
+  border-left-color: var(--gc-emergency);
+  background: color-mix(in srgb, var(--gc-emergency) 12%, var(--gc-surface-raised));
+}
+
+.announcement__when {
+  font-size: var(--gc-micro);
+  color: var(--gc-text-faint);
+  margin-top: 4px;
+}
+
+.install {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gc-gap);
+}
+
+.install a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--gc-touch);
+  border-radius: var(--gc-radius);
+  background: var(--gc-surface-raised);
+  border: 1px solid var(--gc-line);
+  color: var(--gc-text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.button {
+  min-height: var(--gc-touch);
+  border-radius: var(--gc-radius);
+  background: var(--gc-accent);
+  color: #fff;
+  font-weight: 800;
+  padding: 0 var(--gc-pad);
+  width: 100%;
+}
+
+.button--quiet {
+  background: var(--gc-surface-raised);
+  border: 1px solid var(--gc-line);
+  color: var(--gc-text);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: var(--gc-small);
+  font-weight: 700;
+  color: var(--gc-text-dim);
+}
+
+.field input {
+  min-height: var(--gc-touch);
+  border-radius: var(--gc-radius);
+  border: 1px solid var(--gc-line);
+  background: var(--gc-surface-raised);
+  color: var(--gc-text);
+  padding: 0 var(--gc-gap);
+  font: inherit;
+  font-size: max(16px, var(--gc-body));
+}
+
+.error {
+  background: color-mix(in srgb, var(--gc-deny) 16%, var(--gc-surface));
+  border: 1px solid var(--gc-deny);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-gap);
+  font-size: var(--gc-small);
+  line-height: 1.5;
+}
+
+.muted {
+  color: var(--gc-text-dim);
+  font-size: var(--gc-small);
+  line-height: 1.5;
+}
+
+.offline-note {
+  background: var(--gc-surface-raised);
+  border: 1px solid var(--gc-line);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-gap);
+  font-size: var(--gc-small);
+  color: var(--gc-text-dim);
+}

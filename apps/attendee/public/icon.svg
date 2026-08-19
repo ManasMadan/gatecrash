@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Gatecrash Ticket">
+  <!-- A ticket stub with a perforation. Drawn rather than exported so it is 500
+       bytes and needs no build step. -->
+  <rect width="192" height="192" rx="34" fill="#0b0d10"/>
+  <rect x="34" y="58" width="124" height="76" rx="12" fill="none" stroke="#3b82f6" stroke-width="11"/>
+  <path d="M112 58v76" stroke="#a855f7" stroke-width="9" stroke-dasharray="9 10" stroke-linecap="round"/>
+</svg>
