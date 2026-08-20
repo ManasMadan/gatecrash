@@ -1,6 +1,9 @@
 package httpapi
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -173,17 +176,41 @@ func (a *API) venuePlan(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.log.Error("venue: reading digest", "error", err)
 	}
-	// A long cache with a fingerprint to bust it. The plan is the biggest thing
-	// the attendee app fetches and it does not change during an event.
-	w.Header().Set("Cache-Control", "public, max-age=300")
-	if digest != "" {
-		w.Header().Set("ETag", `"`+digest+`"`)
-		if match := r.Header.Get("If-None-Match"); match == `"`+digest+`"` {
-			w.WriteHeader(http.StatusNotModified)
-			return
-		}
+
+	body, err := json.Marshal(VenueResponse{Plan: a.deps.Venue.Plan(), Fingerprint: digest})
+	if err != nil {
+		a.log.Error("venue: encoding the plan", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal", "Could not render the venue plan.")
+		return
 	}
-	writeJSON(w, http.StatusOK, VenueResponse{Plan: a.deps.Venue.Plan(), Fingerprint: digest})
+
+	// The ETag is a hash of the bytes actually being sent, not the manifest digest.
+	//
+	// It used to be the digest, which was wrong in the one case that matters: the
+	// plan the box runs comes from the manifest file beside it, and the digest comes
+	// from what was last ingested. Move a gate on the morning of the event and the
+	// two disagree — every phone then held a five-minute-stale plan and got a 304
+	// forever, so the map kept pointing at a door that was not there. Hashing the
+	// response cannot drift from the response.
+	//
+	// Revalidate rather than cache blind. A plan can change during an event, and
+	// the round trip this costs is one conditional request on a LAN answered by an
+	// empty 304 — while the thing it protects against is an attendee being sent to
+	// the wrong gate.
+	sum := sha256.Sum256(body)
+	etag := `"` + hex.EncodeToString(sum[:8]) + `"`
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("ETag", etag)
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(body); err != nil {
+		a.log.Debug("venue: client went away mid-write", "error", err)
+	}
 }
 
 // root redirects to the attendee app, which is what somebody who typed the box's

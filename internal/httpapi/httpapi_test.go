@@ -3,8 +3,11 @@ package httpapi_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -803,9 +806,14 @@ func TestStaticPayloadIsNotHandedOutForRotatingTickets(t *testing.T) {
 	}
 }
 
-func TestVenuePlanIsCacheableWithAnETag(t *testing.T) {
-	// The map is the largest payload the attendee app fetches and it does not
-	// change during an event.
+// TestVenuePlanRevalidatesAgainstItsOwnBytes pins the fix for a wrong-door bug.
+//
+// The ETag used to be the manifest digest, and the plan the box serves comes from
+// the manifest file beside it rather than from what was last ingested. Move a gate
+// on the morning of the event and the two disagree: every phone kept a stale plan
+// and got a 304 forever, so the map went on pointing at a door that was not there.
+// Hashing the response is the only version that cannot drift from the response.
+func TestVenuePlanRevalidatesAgainstItsOwnBytes(t *testing.T) {
 	h := newHarness(t, engine.ModeStrict)
 
 	resp, err := http.Get(h.server.URL + "/v1/venue")
@@ -823,8 +831,53 @@ func TestVenuePlanIsCacheableWithAnETag(t *testing.T) {
 	if len(body.Plan.Zones) == 0 || len(body.Plan.Sections) == 0 {
 		t.Error("the venue response carries no plan")
 	}
-	if !strings.Contains(resp.Header.Get("Cache-Control"), "max-age") {
-		t.Errorf("Cache-Control is %q", resp.Header.Get("Cache-Control"))
+
+	etag := resp.Header.Get("ETag")
+	if etag == "" {
+		t.Fatal("no ETag, so every phone refetches the largest payload on the box")
+	}
+	if body.Fingerprint != "" && strings.Contains(etag, body.Fingerprint) {
+		t.Error("the ETag is the manifest digest again; it must describe the bytes sent")
+	}
+	if cc := resp.Header.Get("Cache-Control"); !strings.Contains(cc, "no-cache") {
+		t.Errorf("Cache-Control is %q, want revalidation: a plan can change mid-event", cc)
+	}
+
+	// The point of the ETag: a revalidation costs an empty 304 rather than the plan.
+	req, err := http.NewRequest(http.MethodGet, h.server.URL+"/v1/venue", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("If-None-Match", etag)
+	again, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Body.Close()
+	if again.StatusCode != http.StatusNotModified {
+		t.Errorf("revalidation returned %d, want 304", again.StatusCode)
+	}
+}
+
+// TestTheVenueETagIsAHashOfTheResponse states the property directly, so a future
+// change back to any identifier that is merely *near* the payload fails here.
+func TestTheVenueETagIsAHashOfTheResponse(t *testing.T) {
+	h := newHarness(t, engine.ModeStrict)
+
+	resp, err := http.Get(h.server.URL + "/v1/venue")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sum := sha256.Sum256(raw)
+	want := `"` + hex.EncodeToString(sum[:8]) + `"`
+	if got := resp.Header.Get("ETag"); got != want {
+		t.Errorf("ETag is %s, want %s — a hash of the bytes actually sent", got, want)
 	}
 }
 
