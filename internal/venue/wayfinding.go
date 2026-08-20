@@ -267,7 +267,7 @@ func (v *Venue) destination(req GuidanceRequest, opts RouteOptions) (*Destinatio
 		Section:     section.Code,
 		SectionName: section.Name,
 		Seat:        req.Seat,
-		SeatLabel:   req.Seat.String(),
+		SeatLabel:   v.SeatLabel(req.Seat),
 		ViewNote:    section.ViewNote,
 		Entrances:   v.entrancesBySection[section.Code],
 	}

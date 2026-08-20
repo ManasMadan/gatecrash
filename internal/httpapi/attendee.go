@@ -131,7 +131,7 @@ func (a *API) attendeeTicket(w http.ResponseWriter, r *http.Request) {
 		ID:        id.String(),
 		Tier:      found.Tier,
 		Seat:      found.Seat,
-		SeatLabel: found.Seat.String(),
+		SeatLabel: a.deps.Venue.SeatLabel(found.Seat),
 		Event:     a.deps.Event.Name,
 		EventID:   a.deps.Event.ID.Hex(),
 		Venue:     a.deps.Event.Venue,

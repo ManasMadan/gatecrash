@@ -343,7 +343,7 @@ func (e *Engine) decide(tx Tx, scan Scan, stamp hlc.Timestamp, now time.Time) (d
 
 	base.Tier = record.Tier
 	base.Seat = record.Seat
-	base.SeatLabel = record.Seat.String()
+	base.SeatLabel = e.cfg.Venue.SeatLabel(record.Seat)
 	if tier, ok := e.cfg.Venue.Tier(record.Tier); ok {
 		base.TierName = tier.Name
 		base.TierColour = tier.Colour

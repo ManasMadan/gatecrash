@@ -90,7 +90,9 @@ func TestAdmitCarriesEverythingTheGateNeedsToShow(t *testing.T) {
 	if result.TierName != "General Admission" || result.TierColour == "" {
 		t.Errorf("tier presentation is %q / %q", result.TierName, result.TierColour)
 	}
-	if result.SeatLabel != "block-a row A seat 1" {
+	// The section's name, not its code. An usher points at Block A; "block-a" is a
+	// database row.
+	if result.SeatLabel != "Block A row A seat 1" {
 		t.Errorf("seat label is %q", result.SeatLabel)
 	}
 	if result.SectionName != "Block A" {

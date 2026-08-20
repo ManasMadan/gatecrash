@@ -633,7 +633,9 @@ func TestGuidanceWalksAMultiStageVenue(t *testing.T) {
 			t.Errorf("portal-lower reports missing %v, want [perimeter]", step.Missing)
 		}
 	}
-	if first.Destination == nil || first.Destination.SeatLabel != seat.String() {
+	// The label carries the section's name rather than its code: an attendee is
+	// looking for "Block A", not for "block-a".
+	if first.Destination == nil || first.Destination.SeatLabel != v.SeatLabel(seat) {
 		t.Fatalf("destination is %+v, want the seated destination", first.Destination)
 	}
 	if first.Arrived {
