@@ -248,6 +248,33 @@ func (t *Tracker) NameDevice(id, name string) {
 func (t *Tracker) Observe(result engine.Result) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.fold(result, true)
+}
+
+// Rehydrate folds a decision that happened before this process started.
+//
+// The tracker is in memory, and for a box whose whole design assumes it will lose
+// power, in memory alone is not good enough. Before this existed, a reboot brought
+// the dashboard back reading "Inside 0" with twenty thousand people in the field —
+// the redemptions were safe in SQLite, but the number the safety officer reads off
+// the wall had been reset to zero. An occupancy figure that a power cut silently
+// zeroes is worse than no occupancy figure at all, because it is believed.
+//
+// The distinction from Observe is deliberate and is the reason this is a separate
+// entry point rather than a flag: cumulative state is rebuilt, and the sliding
+// throughput windows and per-gate liveness are not. Replaying three hours of scans
+// into the rate rings at boot would show every gate running flat out at the moment
+// the box came up, and would mark a genuinely dead gate as busy. A freshly booted
+// box has no throughput history, and saying so is the honest answer.
+func (t *Tracker) Rehydrate(result engine.Result) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.fold(result, false)
+}
+
+// fold applies one decision. live distinguishes a scan happening now from one
+// replayed at boot; see Rehydrate.
+func (t *Tracker) fold(result engine.Result, live bool) {
 
 	// Liveness and throughput are measured at processing time, not at the
 	// scan's own timestamp.
@@ -264,9 +291,11 @@ func (t *Tracker) Observe(result engine.Result) {
 	t.verdicts[result.Verdict]++
 	if result.Device != "" {
 		t.deviceScans[result.Device]++
-		t.deviceSeen[result.Device] = now
+		if live {
+			t.deviceSeen[result.Device] = now
+		}
 	}
-	if result.Checkpoint != "" {
+	if live && result.Checkpoint != "" {
 		t.lastScanByGate[result.Checkpoint] = now
 	}
 
@@ -299,13 +328,15 @@ func (t *Tracker) Observe(result engine.Result) {
 		t.admittedBySection[result.Seat.Section]++
 	}
 
-	trend, ok := t.trendByGate[result.Checkpoint]
-	if !ok {
-		trend = newRing()
-		t.trendByGate[result.Checkpoint] = trend
+	if live {
+		trend, ok := t.trendByGate[result.Checkpoint]
+		if !ok {
+			trend = newRing()
+			t.trendByGate[result.Checkpoint] = trend
+		}
+		trend.add(now)
+		t.overall.add(now)
 	}
-	trend.add(now)
-	t.overall.add(now)
 
 	// Occupancy follows direction. An outbound scan decrements, which is what
 	// keeps a capacity meter honest on a room people leave.

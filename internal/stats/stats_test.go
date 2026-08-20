@@ -442,3 +442,76 @@ func BenchmarkObserve(b *testing.B) {
 		tracker.Observe(result)
 	}
 }
+
+// TestRehydrateRebuildsTheLivePictureAfterARestart is the safety case.
+//
+// The tracker is in memory and the box is expected to lose power. Before Rehydrate
+// existed, a reboot brought the dashboard back reading "Inside 0" with the field
+// full: the redemptions were safe in SQLite, but the occupancy number a safety
+// officer reads off the wall had been silently reset to zero.
+func TestRehydrateRebuildsTheLivePictureAfterARestart(t *testing.T) {
+	before, c := newTracker(t)
+	before.SetIssued(500, map[venue.TierCode]int{"ga": 400, "vip": 100})
+
+	history := []engine.Result{}
+	for i := 0; i < 40; i++ {
+		history = append(history, admit(c.now(), "gate-north", "perimeter", "ga", "scanner-north"))
+	}
+	for i := 0; i < 5; i++ {
+		history = append(history, admit(c.now(), "pit-gate", "pit", "vip", "scanner-pit"))
+	}
+	history = append(history, deny(c.now(), "gate-north", engine.InvalidSig, "scanner-north"))
+	for _, result := range history {
+		before.Observe(result)
+	}
+
+	// The power goes out. A new process, a new tracker, the same log.
+	after, _ := newTracker(t)
+	after.SetIssued(500, map[venue.TierCode]int{"ga": 400, "vip": 100})
+	for _, result := range history {
+		after.Rehydrate(result)
+	}
+
+	live, restored := before.Snapshot(), after.Snapshot()
+	if restored.Inside != live.Inside {
+		t.Errorf("inside=%d after a restart, want %d", restored.Inside, live.Inside)
+	}
+	if restored.Scans != live.Scans || restored.Denied != live.Denied {
+		t.Errorf("scans=%d denied=%d, want %d and %d",
+			restored.Scans, restored.Denied, live.Scans, live.Denied)
+	}
+	if got := after.Occupancy("pit"); got != 5 {
+		t.Errorf("pit occupancy=%d, want 5", got)
+	}
+	for i, tier := range restored.Tiers {
+		if tier.Admitted != live.Tiers[i].Admitted {
+			t.Errorf("%s turnout=%d, want %d", tier.Code, tier.Admitted, live.Tiers[i].Admitted)
+		}
+	}
+}
+
+// TestRehydrateDoesNotInventThroughput pins the other half of the bargain.
+//
+// Replaying three hours of scans into the rate rings at boot would show every gate
+// running flat out at the instant the box came back, and would mark a gate that has
+// genuinely stopped working as busy. A freshly booted box has no throughput
+// history, and saying so is the honest answer.
+func TestRehydrateDoesNotInventThroughput(t *testing.T) {
+	tracker, c := newTracker(t)
+	for i := 0; i < 200; i++ {
+		tracker.Rehydrate(admit(c.now(), "gate-north", "perimeter", "ga", "scanner-north"))
+	}
+
+	if rate := tracker.GateRate("gate-north"); rate != 0 {
+		t.Errorf("gate rate=%v straight after a restart, want 0", rate)
+	}
+	live := tracker.Snapshot()
+	if live.Rate != 0 {
+		t.Errorf("overall rate=%v straight after a restart, want 0", live.Rate)
+	}
+	for _, gate := range live.Gates {
+		if gate.Quiet {
+			t.Errorf("%s is marked quiet straight after a restart", gate.Code)
+		}
+	}
+}
