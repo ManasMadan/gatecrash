@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Gatecrash Control">
+  <!-- Three bars: the occupancy meters this screen is mostly made of. -->
+  <rect width="192" height="192" rx="34" fill="#0b0d10"/>
+  <g fill="none" stroke-width="14" stroke-linecap="round">
+    <path d="M46 132h100" stroke="#00b451"/>
+    <path d="M46 96h64" stroke="#3b82f6"/>
+    <path d="M46 60h34" stroke="#e07800"/>
+  </g>
+</svg>
