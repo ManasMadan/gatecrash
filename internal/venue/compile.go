@@ -513,8 +513,19 @@ func (v *Venue) loadCheckpoints(checkpoints []Checkpoint) error {
 		}
 		cp.Node = NodeID(normalizeCode(string(cp.Node)))
 		if cp.Node != "" {
-			if _, ok := v.nodes[cp.Node]; !ok {
+			node, ok := v.nodes[cp.Node]
+			if !ok {
 				return codeError("checkpoint", string(cp.Code), fmt.Sprintf("map node %q does not exist", cp.Node))
+			}
+			// A checkpoint that names a walk-graph node already has a location, so
+			// take it rather than asking the organizer to write the same
+			// coordinates twice. Two copies of one fact is two chances to disagree,
+			// and the way it disagrees is a gate drawn in the wrong place on a map
+			// somebody is using to find that gate. An explicit Position still wins:
+			// several doors can share one node, and a plan that separates them on
+			// the map is saying something the graph does not.
+			if cp.Position == (Point{}) {
+				cp.Position = node.Position
 			}
 		}
 

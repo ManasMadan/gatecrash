@@ -926,3 +926,54 @@ func BenchmarkRoute(b *testing.B) {
 		}
 	}
 }
+
+// TestCheckpointTakesItsPositionFromItsNode covers the map's most embarrassing
+// possible failure: a gate drawn somewhere other than where it is.
+//
+// A checkpoint that names a walk-graph node already has coordinates. Making the
+// organizer repeat them is two copies of one fact, and the way two copies disagree
+// is a pin in the wrong place on the map somebody is using to find that gate.
+func TestCheckpointTakesItsPositionFromItsNode(t *testing.T) {
+	plan := testPlan()
+
+	var node Node
+	for _, n := range plan.Map.Nodes {
+		if n.ID == plan.Checkpoints[0].Node {
+			node = n
+		}
+	}
+	if node.ID == "" {
+		t.Fatal("the first checkpoint in the test plan should name a map node")
+	}
+	plan.Checkpoints[0].Position = Point{}
+
+	v, err := Compile(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cp, ok := v.Checkpoint(plan.Checkpoints[0].Code)
+	if !ok {
+		t.Fatal("checkpoint vanished")
+	}
+	if cp.Position != node.Position {
+		t.Errorf("position is %v, want the node's %v", cp.Position, node.Position)
+	}
+}
+
+// TestAnExplicitCheckpointPositionWins because several doors can share one walk
+// node, and a plan that separates them on the map is saying something the graph
+// does not.
+func TestAnExplicitCheckpointPositionWins(t *testing.T) {
+	plan := testPlan()
+	want := Point{X: 7, Y: 11}
+	plan.Checkpoints[0].Position = want
+
+	v, err := Compile(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cp, _ := v.Checkpoint(plan.Checkpoints[0].Code)
+	if cp.Position != want {
+		t.Errorf("position is %v, want the authored %v", cp.Position, want)
+	}
+}
