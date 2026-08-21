@@ -1,0 +1,431 @@
+/*
+ * The scanner's own styles. The verdict screen and the map come from @gatecrash/ui;
+ * everything here is the frame around them.
+ *
+ * The layout is one-handed and thumb-first. A bouncer holds the phone in one hand,
+ * low, and looks at the queue rather than the screen, so every control that gets
+ * used lives in the bottom third and is at least 56px tall. The top of the screen is
+ * for information only — nothing there is tappable, because reaching it means
+ * shifting grip.
+ */
+
+#root {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The status strip. Tells a guard, without being asked: which gate this phone is,
+ * whether the box is reachable, and how many scans are waiting. Those three facts
+ * are the whole of what goes wrong at a gate. */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: var(--gc-gap);
+  padding: max(8px, env(safe-area-inset-top)) var(--gc-pad) 8px;
+  background: var(--gc-surface);
+  border-bottom: 1px solid var(--gc-line);
+  font-size: var(--gc-small);
+  font-weight: 700;
+  min-height: 44px;
+}
+
+.strip__gate {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strip__lane {
+  color: var(--gc-text-dim);
+  font-weight: 600;
+}
+
+/* Connection state. Three states rather than two: "syncing" matters because a
+ * scanner that has connected but not yet downloaded its filter cannot work
+ * offline yet, and a guard should not walk away from Wi-Fi during it. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--gc-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pill--online {
+  background: color-mix(in srgb, var(--gc-admit) 22%, transparent);
+  color: var(--gc-admit);
+}
+.pill--syncing {
+  background: color-mix(in srgb, var(--gc-accent) 22%, transparent);
+  color: var(--gc-accent);
+}
+.pill--offline {
+  background: color-mix(in srgb, var(--gc-redirect) 25%, transparent);
+  color: var(--gc-redirect);
+}
+.pill--queued {
+  background: color-mix(in srgb, var(--gc-accent) 18%, transparent);
+  color: var(--gc-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The camera fills everything between the strip and the controls. */
+.viewfinder {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+.viewfinder video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* The rear camera is not mirrored, and mirroring it makes reading a ticket
+   * genuinely harder. */
+  transform: none;
+}
+
+/* A reticle, so a guard knows where to hold the ticket. Deliberately large and
+ * loose: a tight box makes people fiddle with alignment, and the decoder does not
+ * care where in the frame the code is. */
+.reticle {
+  position: absolute;
+  inset: 18% 12%;
+  border: 3px solid rgb(255 255 255 / 55%);
+  border-radius: var(--gc-radius-lg);
+  pointer-events: none;
+}
+
+.reticle::before,
+.reticle::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  height: 3px;
+  background: var(--gc-accent);
+  opacity: 0.9;
+}
+.reticle::before {
+  top: 50%;
+}
+.reticle::after {
+  display: none;
+}
+
+.viewfinder__hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--gc-pad);
+  text-align: center;
+  font-size: var(--gc-small);
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 80%);
+  pointer-events: none;
+}
+
+/* The controls. Bottom third, thumb-sized, and only the things that get used. */
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--gc-gap);
+  padding: var(--gc-gap) var(--gc-pad) max(var(--gc-gap), env(safe-area-inset-bottom));
+  background: var(--gc-surface);
+  border-top: 1px solid var(--gc-line);
+}
+
+.control {
+  min-height: var(--gc-touch);
+  border-radius: var(--gc-radius);
+  background: var(--gc-surface-raised);
+  border: 1px solid var(--gc-line);
+  color: var(--gc-text);
+  font-weight: 700;
+  font-size: var(--gc-small);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px;
+}
+
+.control__glyph {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.control[aria-pressed='true'] {
+  background: var(--gc-accent);
+  border-color: var(--gc-accent);
+  color: #fff;
+}
+
+/* The two signal buttons. Deliberately different shapes and colours from every
+ * other control, and the alarm is the only red thing in the interface that is not a
+ * refusal. */
+.control--alarm {
+  background: color-mix(in srgb, var(--gc-emergency) 28%, var(--gc-surface-raised));
+  border-color: var(--gc-emergency);
+  color: #fff;
+}
+
+.control--staff {
+  background: color-mix(in srgb, var(--gc-warning) 22%, var(--gc-surface-raised));
+  border-color: var(--gc-warning);
+}
+
+/* Sheets, for the signal picker and settings. Bottom-anchored so the list rises
+ * into the thumb rather than sitting under it. */
+.sheet {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 62%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  z-index: 90;
+}
+
+.sheet__panel {
+  background: var(--gc-surface);
+  border-radius: var(--gc-radius-lg) var(--gc-radius-lg) 0 0;
+  padding: var(--gc-pad) var(--gc-pad) max(var(--gc-pad), env(safe-area-inset-bottom));
+  max-height: 85dvh;
+  overflow-y: auto;
+  animation: sheet-up var(--gc-settle) ease-out;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(12%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.sheet__title {
+  font-size: var(--gc-large);
+  font-weight: 800;
+  margin: 0 0 var(--gc-gap);
+}
+
+.sheet__note {
+  color: var(--gc-text-dim);
+  font-size: var(--gc-small);
+  margin: 0 0 var(--gc-pad);
+  line-height: 1.45;
+}
+
+.sheet__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--gc-gap);
+}
+
+.signal {
+  min-height: var(--gc-touch-large);
+  border-radius: var(--gc-radius);
+  border: 1px solid var(--gc-line);
+  background: var(--gc-surface-raised);
+  color: var(--gc-text);
+  font-weight: 700;
+  text-align: left;
+  padding: var(--gc-gap);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.signal__severity {
+  font-size: var(--gc-micro);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.signal[data-severity='emergency'] {
+  border-color: var(--gc-emergency);
+  background: color-mix(in srgb, var(--gc-emergency) 20%, var(--gc-surface-raised));
+}
+.signal[data-severity='urgent'] {
+  border-color: var(--gc-urgent);
+  background: color-mix(in srgb, var(--gc-urgent) 16%, var(--gc-surface-raised));
+}
+.signal[data-severity='warning'] {
+  border-color: var(--gc-warning);
+}
+
+/* Forms, for enrollment and settings. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gc-gap);
+  padding: var(--gc-pad);
+  max-width: 34rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: var(--gc-small);
+  font-weight: 700;
+  color: var(--gc-text-dim);
+}
+
+.field input,
+.field select {
+  min-height: var(--gc-touch);
+  border-radius: var(--gc-radius);
+  border: 1px solid var(--gc-line);
+  background: var(--gc-surface-raised);
+  color: var(--gc-text);
+  padding: 0 var(--gc-gap);
+  font: inherit;
+  /* 16px minimum, or iOS Safari zooms the page when the field is focused and the
+   * layout jumps under the guard's thumb. */
+  font-size: max(16px, var(--gc-body));
+}
+
+.button {
+  min-height: var(--gc-touch);
+  border-radius: var(--gc-radius);
+  background: var(--gc-accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: var(--gc-body);
+  padding: 0 var(--gc-pad);
+}
+
+.button--quiet {
+  background: var(--gc-surface-raised);
+  border: 1px solid var(--gc-line);
+  color: var(--gc-text);
+}
+
+.button--danger {
+  background: var(--gc-deny);
+}
+
+.button:disabled {
+  opacity: 0.45;
+}
+
+.error {
+  background: color-mix(in srgb, var(--gc-deny) 20%, var(--gc-surface));
+  border: 1px solid var(--gc-deny);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-gap);
+  font-size: var(--gc-small);
+  line-height: 1.45;
+}
+
+.notice {
+  background: var(--gc-surface-raised);
+  border: 1px solid var(--gc-line);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-gap);
+  font-size: var(--gc-small);
+  line-height: 1.5;
+  color: var(--gc-text-dim);
+}
+
+/* An emergency banner pushed down from the control room. Full width, on top of
+ * everything except a verdict, because an evacuation is not something to be
+ * scrolled to. */
+.alarm-banner {
+  background: var(--gc-emergency);
+  color: #fff;
+  padding: var(--gc-gap) var(--gc-pad);
+  font-weight: 800;
+  text-align: center;
+  animation: alarm-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes alarm-pulse {
+  50% {
+    filter: brightness(1.35);
+  }
+}
+
+/* Diagnostics. Read once, by somebody who is already having a bad time. */
+.diagnostics {
+  font-family: var(--gc-font-mono);
+  font-size: var(--gc-micro);
+  color: var(--gc-text-dim);
+  line-height: 1.7;
+}
+
+.diagnostics dt {
+  color: var(--gc-text-faint);
+}
+
+.diagnostics dd {
+  margin: 0 0 6px;
+  word-break: break-all;
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history__row {
+  display: flex;
+  align-items: center;
+  gap: var(--gc-gap);
+  padding: 8px var(--gc-gap);
+  border-radius: var(--gc-radius);
+  background: var(--gc-surface-raised);
+  font-size: var(--gc-small);
+}
+
+.history__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.history__dot[data-severity='admit'] {
+  background: var(--gc-admit);
+}
+.history__dot[data-severity='deny'] {
+  background: var(--gc-deny);
+}
+.history__dot[data-severity='redirect'] {
+  background: var(--gc-redirect);
+}
+
+.history__what {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history__when {
+  color: var(--gc-text-faint);
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Gatecrash Scanner">
+  <!-- A gate: two posts and a bar, with a scan line through it. Drawn rather than
+       exported so the icon is 600 bytes and needs no build step. -->
+  <rect width="192" height="192" rx="34" fill="#0b0d10"/>
+  <g fill="none" stroke="#00b451" stroke-width="12" stroke-linecap="round">
+    <path d="M52 148V64a44 44 0 0 1 88 0v84"/>
+    <path d="M36 96h120" stroke="#3b82f6"/>
+  </g>
+</svg>
