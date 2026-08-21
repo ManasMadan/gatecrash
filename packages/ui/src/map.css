@@ -75,6 +75,19 @@
   stroke-width: 0.8;
 }
 
+/* Area names. Quiet enough to stay behind the seat blocks and the route, loud
+ * enough to answer "which part of the venue am I looking at". */
+.gc-map__zone-label {
+  fill: var(--gc-text-dim);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  paint-order: stroke;
+  stroke: var(--gc-bg);
+  stroke-width: 0.6;
+  pointer-events: none;
+}
+
 .gc-map__section-label {
   fill: var(--gc-text-dim);
   font-weight: 700;
