@@ -91,6 +91,13 @@ describe('formatSeat', () => {
     expect(formatSeat('block-a row A seat 12')).toBe('A · A12')
   })
 
+  it('handles a section name with a space in it', () => {
+    // The box sends the section's name rather than its code, and a name has
+    // spaces. This used to compress to "BLOCK · A12".
+    expect(formatSeat('Block A row A seat 12')).toBe('A · A12')
+    expect(formatSeat('Golden Circle row B seat 3')).toBe('GOLDEN CIRCLE · B3')
+  })
+
   it('leaves an unrecognised label alone rather than mangling it', () => {
     expect(formatSeat('standing')).toBe('STANDING')
   })

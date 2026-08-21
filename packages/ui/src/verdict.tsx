@@ -188,11 +188,13 @@ export function VerdictScreen({
  * actually shouts across a concourse.
  */
 export function formatSeat(label: string): string {
-  const match = /^(\S+)\s+row\s+(\S+)\s+seat\s+(\S+)$/i.exec(label)
+  // The section part is lazy rather than one token: the label carries the section's
+  // name now ("Block A row A seat 12"), not its code, and a name has spaces in it.
+  const match = /^(.+?)\s+row\s+(\S+)\s+seat\s+(\S+)$/i.exec(label)
   if (!match) return label.toUpperCase()
 
   const [, section, row, seat] = match as unknown as [string, string, string, string]
-  const block = section.replace(/^block-/i, '').toUpperCase()
+  const block = section.replace(/^(block|section|stand)[-\s]+/i, '').toUpperCase()
   return `${block} · ${row.toUpperCase()}${seat}`
 }
 
