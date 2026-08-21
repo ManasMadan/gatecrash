@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { ApiError, Client } from '@gatecrash/protocol'
-import type { Announcement, NearbyAmenity, TicketView } from '@gatecrash/protocol'
+import type { Announcement, Destination, NearbyAmenity, TicketView } from '@gatecrash/protocol'
 import { VenueMap } from '@gatecrash/ui'
 
 import {
@@ -371,7 +371,9 @@ function Wallet({
             <span className="step__what">
               <span className="step__name">{destination.section_name}</span>
               <span className="step__hint">
-                {destination.seat_label ?? ''}
+                {/* The row and the seat only. The section is the line above it, and
+                    "Block A / Block A row A seat 1" is the same words twice. */}
+                {seatDetail(destination)}
                 {destination.view_note ? ` · ${destination.view_note}` : ''}
                 {destination.seat_note ? ` · ${destination.seat_note}` : ''}
               </span>
@@ -620,6 +622,19 @@ function lastNode(view: TicketView | undefined): string | undefined {
 
 function deviceLabel(): string {
   return /iPhone|iPad/i.test(navigator.userAgent) ? 'iphone' : 'android'
+}
+
+/**
+ * The part of a seat that is not already on the line above: row and seat.
+ *
+ * Falls back to the whole label when the seat has no row and number — a standing
+ * ticket in a named area has a section and nothing else, and repeating the section
+ * is better than showing an empty line.
+ */
+function seatDetail(destination: Destination): string {
+  const seat = destination.seat
+  if (seat?.row && seat.seat) return `Row ${seat.row} · Seat ${seat.seat}`
+  return destination.seat_label ?? ''
 }
 
 function clockOf(iso: string): string {
