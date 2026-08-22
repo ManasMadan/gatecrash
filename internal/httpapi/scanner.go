@@ -335,11 +335,16 @@ func (a *API) replayRedemptions(ctx context.Context, since uint64) ([]ssehub.Eve
 
 // ScanRequest is one presentation of a QR code at a gate.
 type ScanRequest struct {
-	// ScanID is the client-generated idempotency key, a UUIDv7-shaped value the
-	// scanner mints before it sends. A retry after a Wi-Fi blip resends the same
-	// id and gets the original verdict back, which is what stops "the network
-	// duplicated my request" from being reported to staff as "someone is reusing a
-	// ticket".
+	// ScanID is the client-generated idempotency key: the same 26-character base32
+	// form as a ticket id, minted by the scanner before it sends.
+	//
+	// A retry after a Wi-Fi blip resends the same id and gets the original verdict
+	// back, which is what stops "the network duplicated my request" from being
+	// reported to staff as "someone is reusing a ticket".
+	//
+	// The format is not a UUID, and this comment used to say it was — which sent
+	// every client that believed it into a 400. `newScanId()` in gatecrash-client
+	// mints one, and callers should use that rather than knowing this.
 	ScanID string `json:"scan_id"`
 
 	// Payload is the raw decoded string from the camera or the barcode gun.
