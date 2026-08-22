@@ -17,6 +17,7 @@ let package = Package(
     products: [
         .library(name: "BackstageMesh", targets: ["BackstageMesh"]),
         .library(name: "BackstageCrypto", targets: ["BackstageCrypto"]),
+        .library(name: "BackstageBLE", targets: ["BackstageBLE"]),
     ],
     targets: [
         // Pure Swift, no CoreBluetooth, no UIKit. Runs anywhere Swift runs.
@@ -26,6 +27,18 @@ let package = Package(
         // CryptoKit and the channel keys have to match the box's byte for byte, so it is
         // implemented here against the RFC 9106 test vectors.
         .target(name: "BackstageCrypto", dependencies: ["BackstageMesh"]),
+
+        // The radio. CoreBluetooth exists on macOS as well as iOS, which is what lets
+        // this compile and be type-checked by `swift build` on any Mac — no Xcode, no
+        // simulator, no device. What it cannot do here is prove two phones talk to each
+        // other; nothing short of two phones can.
+        .target(name: "BackstageBLE", dependencies: ["BackstageMesh"]),
+
+        // The app itself. An executable target rather than an Xcode project, so that
+        // `swift build` type-checks every view on any Mac — SwiftUI and CoreBluetooth
+        // both exist on macOS. Turning this into a shippable .ipa still needs Xcode and a
+        // signing identity; see README.md for that half.
+        .executableTarget(name: "BackstageApp", dependencies: ["BackstageBLE", "BackstageMesh"]),
 
         // A one-file executable rather than a benchmark framework: the question is
         // "how long does one derivation take on real hardware", and that needs a clock

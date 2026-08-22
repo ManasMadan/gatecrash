@@ -52,6 +52,16 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
 fi
 
 echo
+echo "==> building every target, including the radio and the app"
+
+# `swift test` alone would not touch these: BackstageBLE and BackstageApp have no tests,
+# because what they do needs two phones in a room. Building them still catches the failure
+# that matters most often — the protocol changed and the code using it no longer compiles.
+# CoreBluetooth and SwiftUI both exist on macOS, which is what makes this possible without
+# Xcode.
+swift build
+
+echo
 echo "==> building and testing the protocol port"
 
 if [[ -n "$FRAMEWORKS" ]]; then
