@@ -20,7 +20,10 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION: '1.24'
+  # Matches the `go` directive in go.mod. They have to agree: golangci-lint refuses to lint a
+  # module whose language version is newer than the Go its own binary was built with, and a
+  # mismatch there fails the job with a message about neither.
+  GO_VERSION: '1.25'
   NODE_VERSION: '22'
 
 jobs:
@@ -43,9 +46,12 @@ jobs:
       - name: go vet
         run: go vet ./...
 
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          # Pinned rather than `latest`. `latest` is a moving target that can start failing on a
+          # commit that changed nothing, and this specific pairing — go.mod targeting 1.25.0 and
+          # a linter binary built with 1.24 — is exactly how that happened.
+          version: v2.13.1
 
       - name: go build
         run: go build ./...
@@ -154,7 +160,14 @@ jobs:
         run: pnpm --filter gatecrash-client --filter gatecrash-ui build
 
       - run: pnpm -r typecheck
-      - run: pnpm -r lint
+
+      - name: eslint
+        # `pnpm exec eslint .` rather than `pnpm -r lint`: no workspace package defines a lint
+        # script — the root does — so the recursive form exits non-zero with
+        # ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT. The root `lint` script is not usable here either,
+        # because it also runs `go vet` and this job has no Go.
+        run: pnpm exec eslint .
+
       - run: pnpm -r test
       - run: pnpm -r build
 
