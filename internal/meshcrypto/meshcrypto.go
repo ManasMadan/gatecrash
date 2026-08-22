@@ -507,3 +507,20 @@ func (k BeaconKey) MatchesBeacon(token [4]byte, window uint64) bool {
 func Checksum(body []byte) uint32 {
 	return crc32.ChecksumIEEE(body)
 }
+
+// channelSaltForTest and rawArgon2ForTest exist so the conformance vectors printed for
+// the Kotlin and Swift ports can be produced from the real code paths rather than
+// reimplemented in a test.
+//
+// Exported-for-test helpers are usually a smell. Here the alternative is worse: a test
+// that recomputes the salt would be a second implementation of the derivation, and a
+// port checked against it would be checked against a copy rather than against the thing
+// the box actually runs.
+func channelSaltForTest(eventID, channel string) []byte {
+	salt := sha256.Sum256([]byte(saltPrefix + "\x00" + eventID + "\x00" + normalizeChannel(channel)))
+	return salt[:]
+}
+
+func rawArgon2ForTest(passphrase, salt []byte) []byte {
+	return argon2.IDKey(passphrase, salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+}

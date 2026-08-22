@@ -394,3 +394,32 @@ func BenchmarkChannelSeal(b *testing.B) {
 		}
 	}
 }
+
+// TestChannelKeyVectorsForThePorts emits the values the Kotlin and Swift ports assert
+// against.
+//
+// Argon2id is implemented from the RFC in Swift, because CryptoKit has none and the key
+// has to match this one byte for byte — a channel is only a channel if everybody in it
+// lands on the same key. These are what the port is checked against.
+func TestChannelKeyVectorsForThePorts(t *testing.T) {
+	for _, tc := range []struct{ event, channel, passphrase string }{
+		{"SUNDOWN", "lost-and-found", "orange lanyard"},
+		{"SUNDOWN", "gate-3", "shared secret"},
+		{"EVENT-TWO", "afterparty", "same passphrase"},
+	} {
+		key := DeriveChannelKey(tc.event, tc.channel, tc.passphrase)
+		t.Logf("event=%q channel=%q passphrase=%q", tc.event, tc.channel, tc.passphrase)
+		t.Logf("  salt    %x", channelSaltForTest(tc.event, tc.channel))
+		t.Logf("  key     %x", key.key)
+		// key.ID[:] rather than key.ID: ChannelID has a String method, and %x on a
+		// Stringer hexes the *string* it returns rather than the bytes — which prints a
+		// plausible-looking 14 hex characters for a 4-byte value.
+		t.Logf("  id      %x", key.ID[:])
+	}
+
+	// A raw Argon2id vector too, so the port can be debugged one layer at a time: if the
+	// key is wrong but this matches, the salt derivation is at fault rather than the KDF.
+	t.Logf("raw argon2id(t=1,m=65536,p=4,len=32) of %q with salt %q:\n  %x",
+		"password", "somesalt00000000",
+		rawArgon2ForTest([]byte("password"), []byte("somesalt00000000")))
+}

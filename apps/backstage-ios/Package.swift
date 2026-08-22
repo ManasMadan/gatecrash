@@ -27,6 +27,12 @@ let package = Package(
         // implemented here against the RFC 9106 test vectors.
         .target(name: "BackstageCrypto", dependencies: ["BackstageMesh"]),
 
+        // A one-file executable rather than a benchmark framework: the question is
+        // "how long does one derivation take on real hardware", and that needs a clock
+        // and a release build, not a harness.
+        .executableTarget(name: "bench", dependencies: ["BackstageCrypto"]),
+
         .testTarget(name: "BackstageMeshTests", dependencies: ["BackstageMesh"]),
+        .testTarget(name: "BackstageCryptoTests", dependencies: ["BackstageCrypto"]),
     ]
 )
