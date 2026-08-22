@@ -1,0 +1,13 @@
+{
+  "name": "Gatecrash Ticket",
+  "short_name": "Ticket",
+  "description": "Your ticket, the venue map, and where to go. Works with no signal.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0d10",
+  "theme_color": "#0b0d10",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
