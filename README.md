@@ -158,8 +158,8 @@ that goes with it. An organizer arguing with a promoter about turnout has a numb
 nobody has to take on trust:
 
 ```sh
-gatecrash tools verify        # every row still hashes to the head
-gatecrash tools export        # attendance, with a Merkle proof per ticket
+gatecrash verify        # every row still hashes to the head
+gatecrash export        # attendance, with a Merkle proof per ticket
 ```
 
 ## Zones, seats and where to go next
