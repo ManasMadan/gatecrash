@@ -328,13 +328,16 @@ func repack(query dnswire.Message) []byte {
 // TCP, and a box that only listens on UDP looks broken in exactly that case. The
 // box's own answers never truncate, but a forwarded one can.
 func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
-	udp, err := net.ListenPacket("udp", addr)
+	// Bound through a ListenConfig rather than the package helpers so that a boot
+	// cancelled while the network is still coming up returns instead of blocking.
+	var listener net.ListenConfig
+	udp, err := listener.ListenPacket(ctx, "udp", addr)
 	if err != nil {
 		return fmt.Errorf("dnsd: listening on udp %s: %w", addr, err)
 	}
 	defer udp.Close()
 
-	tcp, err := net.Listen("tcp", addr)
+	tcp, err := listener.Listen(ctx, "tcp", addr)
 	if err != nil {
 		// UDP alone is a working DNS server; TCP is the fallback path. Losing it
 		// is worth a warning, not a failure to boot.
@@ -349,7 +352,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	}()
 
 	if tcp != nil {
-		defer tcp.Close()
+		defer func() { _ = tcp.Close() }()
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -360,7 +363,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	<-ctx.Done()
 	udp.Close()
 	if tcp != nil {
-		tcp.Close()
+		_ = tcp.Close()
 	}
 	wg.Wait()
 	return nil

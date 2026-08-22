@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ManasMadan/gatecrash/internal/audit"
@@ -428,8 +429,8 @@ func (s *Store) NextIncidentSeq(ctx context.Context) (uint64, error) {
 	return next, nil
 }
 
-// Session marks the box's open and close times, which bound the attendance
-// report.
+// OpenSession marks the box's open time, which with CloseSession bounds the
+// attendance report.
 func (s *Store) OpenSession(ctx context.Context, at time.Time) error {
 	if existing, found, err := s.Meta(ctx, MetaOpenedAt); err != nil {
 		return err
@@ -439,12 +440,12 @@ func (s *Store) OpenSession(ctx context.Context, at time.Time) error {
 		// crashed.
 		return nil
 	}
-	return s.SetMeta(ctx, MetaOpenedAt, fmt.Sprintf("%d", at.UnixMilli()))
+	return s.SetMeta(ctx, MetaOpenedAt, strconv.FormatInt(at.UnixMilli(), 10))
 }
 
 // CloseSession records the session end.
 func (s *Store) CloseSession(ctx context.Context, at time.Time) error {
-	return s.SetMeta(ctx, MetaClosedAt, fmt.Sprintf("%d", at.UnixMilli()))
+	return s.SetMeta(ctx, MetaClosedAt, strconv.FormatInt(at.UnixMilli(), 10))
 }
 
 // SessionWindow returns the recorded open and close times.

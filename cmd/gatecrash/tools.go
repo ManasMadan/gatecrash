@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"text/tabwriter"
@@ -83,7 +84,7 @@ func ingest(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer opened.Close()
+	defer func() { _ = opened.Close() }()
 
 	if err := opened.Ingest(ctx, body, envelope.Digest()); err != nil {
 		return err
@@ -157,7 +158,7 @@ func verify(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer opened.Close()
+	defer func() { _ = opened.Close() }()
 
 	if err := opened.IntegrityCheck(ctx); err != nil {
 		return err
@@ -226,7 +227,7 @@ func seal(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer opened.Close()
+	defer func() { _ = opened.Close() }()
 
 	// The checkpoint is stamped with a clock reading taken now. Nothing decides anything
 	// on it — it is there so a sequence of checkpoints can be ordered — so a fresh clock
@@ -281,7 +282,7 @@ func attendance(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer opened.Close()
+	defer func() { _ = opened.Close() }()
 
 	proof, found, err := opened.Attendance(ctx, id)
 	if err != nil {
@@ -334,7 +335,7 @@ func export(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer opened.Close()
+	defer func() { _ = opened.Close() }()
 
 	raw, err := os.ReadFile(filepath.Join(cfg.DataDir, "manifest.json"))
 	if err != nil {
@@ -395,20 +396,38 @@ func export(args []string) error {
 		return err
 	}
 
-	out := os.Stdout
+	// Closed explicitly rather than in a defer, and the error returned.
+	//
+	// This writes the signed attendance report — the artefact a promoter checks the
+	// turnout against, and the one thing here that outlives the event. A deferred close
+	// discards its error, so a full disk or a failing card would leave a truncated
+	// report on disk and `gatecrash export` would still exit 0. Nobody discovers that
+	// until they try to verify it, by which point the database may be gone.
+	out := io.Writer(os.Stdout)
+	var file *os.File
 	if flags.NArg() == 1 {
-		file, err := os.Create(flags.Arg(0))
+		created, err := os.Create(flags.Arg(0))
 		if err != nil {
 			return err
 		}
-		defer file.Close()
-		out = file
+		file, out = created, created
 	}
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(signed); err != nil {
+		if file != nil {
+			_ = file.Close()
+		}
 		return err
 	}
+	if file != nil {
+		// The close that matters: this is where a buffered write actually reaches the
+		// disk, so this is where a full disk reports itself.
+		if err := file.Close(); err != nil {
+			return fmt.Errorf("writing %s: %w", flags.Arg(0), err)
+		}
+	}
+
 	fmt.Fprintf(os.Stderr, "signed by %s\n  publish this fingerprint so the report can be verified\n",
 		boxKey.Public().Fingerprint())
 	return nil
@@ -441,7 +460,7 @@ func doctor(args []string) error {
 		fmt.Fprintf(out, "database\tFAIL  %v\n", err)
 		return nil
 	}
-	defer opened.Close()
+	defer func() { _ = opened.Close() }()
 
 	if err := opened.IntegrityCheck(ctx); err != nil {
 		fmt.Fprintf(out, "database\tFAIL  %v\n", err)

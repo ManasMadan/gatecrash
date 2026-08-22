@@ -116,11 +116,11 @@ func DecodeInvite(payload string) (Invite, error) {
 	}
 	raw, err := base64.RawURLEncoding.DecodeString(body)
 	if err != nil {
-		return Invite{}, fmt.Errorf("%w: %v", ErrBadInvite, err)
+		return Invite{}, fmt.Errorf("%w: %w", ErrBadInvite, err)
 	}
 	var invite Invite
 	if err := json.Unmarshal(raw, &invite); err != nil {
-		return Invite{}, fmt.Errorf("%w: %v", ErrBadInvite, err)
+		return Invite{}, fmt.Errorf("%w: %w", ErrBadInvite, err)
 	}
 	if invite.URL == "" || invite.Code == "" {
 		return Invite{}, fmt.Errorf("%w: missing url or code", ErrBadInvite)

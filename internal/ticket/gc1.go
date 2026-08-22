@@ -57,9 +57,12 @@ func (c Claims) signedMessage() []byte {
 	out = append(out, c.EventID[:]...)
 	out = append(out, c.TicketID[:]...)
 	// A single length byte caps tier names at 255 bytes, which is 250 more than
-	// any real tier name ("GA", "VIP", "Artist", "Crew").
+	// any real tier name ("GA", "VIP", "Artist", "Crew"). Both callers — SignGC1 and
+	// GC1.Verify — run Claims.Validate first, which enforces it.
 	out = append(out, byte(len(c.Tier)))
 	out = append(out, c.Tier...)
+	// IssuedAt is unix milliseconds and Validate rejects anything at or below zero, so
+	// this cannot wrap.
 	return binary.BigEndian.AppendUint64(out, uint64(c.IssuedAt))
 }
 
@@ -134,11 +137,11 @@ func ParseGC1(payload string) (GC1, error) {
 	}
 	ticketID, err := ParseIDBase32(parts[1])
 	if err != nil {
-		return GC1{}, fmt.Errorf("%w: ticket id: %v", ErrBadPayload, err)
+		return GC1{}, fmt.Errorf("%w: ticket id: %w", ErrBadPayload, err)
 	}
 	signature, err := encoding.DecodeString(parts[2])
 	if err != nil {
-		return GC1{}, fmt.Errorf("%w: signature: %v", ErrBadPayload, err)
+		return GC1{}, fmt.Errorf("%w: signature: %w", ErrBadPayload, err)
 	}
 	if len(signature) != ed25519.SignatureSize {
 		return GC1{}, fmt.Errorf("%w: signature is %d bytes, want %d", ErrBadPayload, len(signature), ed25519.SignatureSize)
@@ -160,5 +163,16 @@ func (p GC1) Verify(key VerifyingKey, claims Claims) (bool, error) {
 	if claims.TicketID != p.TicketID {
 		return false, fmt.Errorf("ticket: claims are for %s but payload is for %s", claims.TicketID, p.TicketID)
 	}
+
+	// Validated here as well as at signing, because signedMessage cannot represent a
+	// tier name longer than 255 bytes: it writes a single length byte. Signing rejects
+	// such claims, so this code could never have minted one — but a manifest from
+	// somewhere else, or a corrupted row, could carry one, and the failure would be a
+	// signature that does not verify for no visible reason. An error naming the tier
+	// length is the difference between debuggable and not.
+	if err := claims.Validate(); err != nil {
+		return false, err
+	}
+
 	return key.Verify(domainGC1, claims.signedMessage(), p.Signature), nil
 }

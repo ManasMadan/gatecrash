@@ -87,7 +87,7 @@ const Magic = "gatecrash-beacon/1"
 
 // URL returns the base URL to reach the box.
 func (a Announcement) URL() string {
-	return fmt.Sprintf("https://%s", net.JoinHostPort(a.Address, itoa(int(a.Port))))
+	return "https://" + net.JoinHostPort(a.Address, itoa(int(a.Port)))
 }
 
 // Valid reports whether an announcement is usable.
@@ -135,7 +135,8 @@ func (b *Broadcaster) Run(ctx context.Context) error {
 
 	// Port 0 on the send side: the box broadcasts and does not listen, so binding
 	// the beacon port here would collide with a second process and buy nothing.
-	conn, err := net.ListenPacket("udp4", "0.0.0.0:0")
+	var listener net.ListenConfig
+	conn, err := listener.ListenPacket(ctx, "udp4", "0.0.0.0:0")
 	if err != nil {
 		return fmt.Errorf("beacon: opening socket: %w", err)
 	}
@@ -244,7 +245,8 @@ func broadcastOf(ipnet *net.IPNet) (netip.Addr, bool) {
 // payloads are dropped silently: the beacon port is a public broadcast port and
 // anything may arrive on it.
 func Listen(ctx context.Context, fn func(Announcement, netip.AddrPort)) error {
-	conn, err := net.ListenPacket("udp4", fmt.Sprintf("0.0.0.0:%d", Port))
+	var listener net.ListenConfig
+	conn, err := listener.ListenPacket(ctx, "udp4", fmt.Sprintf("0.0.0.0:%d", Port))
 	if err != nil {
 		return fmt.Errorf("beacon: listening: %w", err)
 	}

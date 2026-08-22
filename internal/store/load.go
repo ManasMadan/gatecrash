@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ManasMadan/gatecrash/internal/engine"
@@ -99,7 +100,7 @@ func (s *Store) Ingest(ctx context.Context, body manifest.Body, digest string) e
 	for key, value := range map[string]string{
 		MetaEventID:          body.Event.ID.Hex(),
 		MetaManifestDigest:   digest,
-		MetaManifestSequence: fmt.Sprintf("%d", body.Sequence),
+		MetaManifestSequence: strconv.FormatUint(body.Sequence, 10),
 		MetaOrganizerKey:     body.Verifying.Fingerprint(),
 	} {
 		if _, err := tx.ExecContext(ctx,

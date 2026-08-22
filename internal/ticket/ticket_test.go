@@ -9,15 +9,6 @@ import (
 	"time"
 )
 
-func mustID(t *testing.T, hexText string) ID {
-	t.Helper()
-	id, err := ParseID(hexText)
-	if err != nil {
-		t.Fatalf("ParseID(%q): %v", hexText, err)
-	}
-	return id
-}
-
 func TestIDEncodesToQRAlphanumericCharactersOnly(t *testing.T) {
 	// QR alphanumeric mode covers 0-9, A-Z and nine punctuation characters. If
 	// an id ever encodes outside that set the encoder silently falls back to

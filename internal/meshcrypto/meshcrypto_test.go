@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +65,7 @@ func TestAWrongPassphraseIsNotAnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wrong.Open(sealed, nil); err != ErrNotForUs {
+	if _, err := wrong.Open(sealed, nil); !errors.Is(err, ErrNotForUs) {
 		t.Errorf("error is %v, want ErrNotForUs", err)
 	}
 }
@@ -107,14 +108,14 @@ func TestAdditionalDataIsAuthenticated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := key.Open(sealed, []byte("header-tampered")); err != ErrNotForUs {
+	if _, err := key.Open(sealed, []byte("header-tampered")); !errors.Is(err, ErrNotForUs) {
 		t.Errorf("a tampered header opened anyway: %v", err)
 	}
 }
 
 func TestTruncatedCiphertextIsMalformedRatherThanAPanic(t *testing.T) {
 	key := DeriveChannelKey(eventID, "general", "pass")
-	if _, err := key.Open([]byte{1, 2, 3}, nil); err != ErrMalformed {
+	if _, err := key.Open([]byte{1, 2, 3}, nil); !errors.Is(err, ErrMalformed) {
 		t.Errorf("error is %v, want ErrMalformed", err)
 	}
 }

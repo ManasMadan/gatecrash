@@ -2,6 +2,7 @@ package watchdog
 
 import (
 	"context"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -247,7 +248,7 @@ func TestRunBlocksWhenNothingIsWatching(t *testing.T) {
 
 	select {
 	case err := <-done:
-		if err != context.DeadlineExceeded {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			t.Errorf("returned %v, want the context's error", err)
 		}
 	case <-time.After(2 * time.Second):

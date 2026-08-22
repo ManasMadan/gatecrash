@@ -133,7 +133,7 @@ func runEvent(args []string) error {
 		jobs := make(chan uint64)
 		var wg sync.WaitGroup
 
-		for worker := 0; worker < max(1, *workers); worker++ {
+		for worker := 0; worker < atLeast(1, *workers); worker++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -306,7 +306,9 @@ func sortedVerdicts(counts map[engine.Verdict]int) []engine.Verdict {
 	return out
 }
 
-func max(a, b int) int {
+// atLeast is `max` under another name: shadowing the builtin works and makes every
+// later reader check which one they are looking at.
+func atLeast(a, b int) int {
 	if a > b {
 		return a
 	}

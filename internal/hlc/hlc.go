@@ -106,14 +106,14 @@ func Parse(s string) (Timestamp, error) {
 	}
 	wall, err := strconv.ParseUint(wallText, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %q: bad wall component: %v", ErrMalformed, s, err)
+		return 0, fmt.Errorf("%w: %q: bad wall component: %w", ErrMalformed, s, err)
 	}
 	if wall > maxWallMillis {
 		return 0, fmt.Errorf("%w: %q: wall component exceeds 48 bits", ErrMalformed, s)
 	}
 	counter, err := strconv.ParseUint(counterText, 10, 16)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %q: bad counter component: %v", ErrMalformed, s, err)
+		return 0, fmt.Errorf("%w: %q: bad counter component: %w", ErrMalformed, s, err)
 	}
 	return New(wall, uint16(counter)), nil
 }

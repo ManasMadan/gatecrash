@@ -78,7 +78,7 @@ func parseWindow(text string) (Window, error) {
 	}
 	value, err := strconv.ParseInt(strings.ToLower(text), 36, 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w: window %q: %v", ErrBadPayload, text, err)
+		return 0, fmt.Errorf("%w: window %q: %w", ErrBadPayload, text, err)
 	}
 	if value < 0 {
 		return 0, fmt.Errorf("%w: window %q is negative", ErrBadPayload, text)
@@ -137,7 +137,7 @@ func ParseGC2(payload string) (GC2, error) {
 	}
 	ticketID, err := ParseIDBase32(parts[1])
 	if err != nil {
-		return GC2{}, fmt.Errorf("%w: ticket id: %v", ErrBadPayload, err)
+		return GC2{}, fmt.Errorf("%w: ticket id: %w", ErrBadPayload, err)
 	}
 	window, err := parseWindow(parts[2])
 	if err != nil {
@@ -148,7 +148,7 @@ func ParseGC2(payload string) (GC2, error) {
 	}
 	mac, err := encoding.DecodeString(parts[3])
 	if err != nil {
-		return GC2{}, fmt.Errorf("%w: mac: %v", ErrBadPayload, err)
+		return GC2{}, fmt.Errorf("%w: mac: %w", ErrBadPayload, err)
 	}
 	if len(mac) != MACLen {
 		return GC2{}, fmt.Errorf("%w: mac is %d bytes, want %d", ErrBadPayload, len(mac), MACLen)

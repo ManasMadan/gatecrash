@@ -29,6 +29,7 @@
 package mdns
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -203,7 +204,7 @@ func New(cfg Config) (*Responder, error) {
 // Run joins the multicast groups, announces, and serves until the context is
 // cancelled. It blocks.
 func (r *Responder) Run(ctx context.Context) error {
-	if err := r.listen(); err != nil {
+	if err := r.listen(ctx); err != nil {
 		return err
 	}
 	defer r.closeConns()
@@ -238,11 +239,12 @@ func (r *Responder) Run(ctx context.Context) error {
 }
 
 // listen opens one socket per address family.
-func (r *Responder) listen() error {
+func (r *Responder) listen(ctx context.Context) error {
+	var listener net.ListenConfig
 	var opened []*conn
 
 	if len(r.service.IPv4) > 0 {
-		pc, err := net.ListenPacket("udp4", fmt.Sprintf("0.0.0.0:%d", Port))
+		pc, err := listener.ListenPacket(ctx, "udp4", fmt.Sprintf("0.0.0.0:%d", Port))
 		if err != nil {
 			// A box sharing a host with an existing Avahi cannot bind, which is
 			// a normal state on a developer laptop and must not be fatal: the
@@ -253,7 +255,7 @@ func (r *Responder) listen() error {
 		}
 	}
 	if len(r.service.IPv6) > 0 {
-		pc, err := net.ListenPacket("udp6", fmt.Sprintf("[::]:%d", Port))
+		pc, err := listener.ListenPacket(ctx, "udp6", fmt.Sprintf("[::]:%d", Port))
 		if err != nil {
 			r.log.Warn("mdns: could not bind IPv6", "error", err)
 		} else {
@@ -351,7 +353,7 @@ func (r *Responder) answer(ctx context.Context, c *conn, query dnswire.Message, 
 //
 // ok is false when the box has nothing to say, which is the common case: most
 // mDNS traffic on a venue network is phones looking for printers.
-func (r *Responder) Respond(query dnswire.Message) (packet []byte, unicast bool, ok bool) {
+func (r *Responder) Respond(query dnswire.Message) (packet []byte, unicast, ok bool) {
 	if query.Header.Response {
 		return nil, false, false
 	}
@@ -700,7 +702,7 @@ func sameRecord(a, b dnswire.Record) bool {
 	}
 	switch a.Type {
 	case dnswire.TypeA, dnswire.TypeAAAA:
-		return string(a.IP) == string(b.IP)
+		return bytes.Equal(a.IP, b.IP)
 	case dnswire.TypePTR, dnswire.TypeCNAME:
 		return dnswire.EqualNames(a.Target, b.Target)
 	case dnswire.TypeSRV:
@@ -708,7 +710,7 @@ func sameRecord(a, b dnswire.Record) bool {
 	case dnswire.TypeTXT:
 		return strings.Join(a.TXT, "\x00") == strings.Join(b.TXT, "\x00")
 	default:
-		return string(a.Data) == string(b.Data)
+		return bytes.Equal(a.Data, b.Data)
 	}
 }
 

@@ -41,8 +41,9 @@ func (v *Venue) Node(id NodeID) (Node, bool) {
 	return node, ok
 }
 
-// Zones, Sections, Checkpoints, Tiers and Amenities return everything in
-// authoring order, which is the order the organizer expects to see it drawn.
+// Zones returns every zone in authoring order, which is the order the organizer
+// expects to see it drawn. Sections, Checkpoints, Tiers and Amenities do the same
+// for theirs.
 func (v *Venue) Zones() []Zone {
 	out := make([]Zone, 0, len(v.zoneOrder))
 	for _, code := range v.zoneOrder {

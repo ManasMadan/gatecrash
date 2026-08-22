@@ -3,6 +3,7 @@ package noise
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"testing"
 )
 
@@ -244,7 +245,7 @@ func TestSpeakingOutOfTurnIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := alice.ReadMessage(make([]byte, Message1Size)); err != ErrWrongTurn {
+	if _, err := alice.ReadMessage(make([]byte, Message1Size)); !errors.Is(err, ErrWrongTurn) {
 		t.Errorf("the initiator read its own turn's message: %v", err)
 	}
 
@@ -252,7 +253,7 @@ func TestSpeakingOutOfTurnIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bob.WriteMessage(nil); err != ErrWrongTurn {
+	if _, err := bob.WriteMessage(nil); !errors.Is(err, ErrWrongTurn) {
 		t.Errorf("the responder spoke first: %v", err)
 	}
 }
@@ -262,13 +263,13 @@ func TestShortMessagesAreRefusedRatherThanPanicking(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bob.ReadMessage([]byte{1, 2, 3}); err != ErrShort {
+	if _, err := bob.ReadMessage([]byte{1, 2, 3}); !errors.Is(err, ErrShort) {
 		t.Errorf("error is %v, want ErrShort", err)
 	}
 }
 
 func TestAHandshakeWithNoStaticKeyIsRefused(t *testing.T) {
-	if _, err := NewHandshake(Config{Initiator: true}); err != ErrNoStatic {
+	if _, err := NewHandshake(Config{Initiator: true}); !errors.Is(err, ErrNoStatic) {
 		t.Errorf("error is %v, want ErrNoStatic", err)
 	}
 }
@@ -278,7 +279,7 @@ func TestSplitBeforeTheEndIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := alice.Split(); err != ErrNotFinished {
+	if _, _, err := alice.Split(); !errors.Is(err, ErrNotFinished) {
 		t.Errorf("error is %v, want ErrNotFinished", err)
 	}
 }
@@ -294,7 +295,7 @@ func TestADegeneratePublicKeyIsRefused(t *testing.T) {
 	if _, err := bob.ReadMessage(make([]byte, Message1Size)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bob.WriteMessage(nil); err != ErrDegenerate {
+	if _, err := bob.WriteMessage(nil); !errors.Is(err, ErrDegenerate) {
 		t.Errorf("an all-zero ephemeral key was accepted: %v", err)
 	}
 }
@@ -313,7 +314,7 @@ func TestAFailedDecryptionDoesNotConsumeANonce(t *testing.T) {
 	tampered[0] ^= 0xff
 
 	before := bob.ReceivedCount()
-	if _, err := bob.Decrypt(nil, tampered); err != ErrAuth {
+	if _, err := bob.Decrypt(nil, tampered); !errors.Is(err, ErrAuth) {
 		t.Fatalf("error is %v, want ErrAuth", err)
 	}
 	if bob.ReceivedCount() != before {
@@ -341,7 +342,7 @@ func TestTransportIsStrictlyOrdered(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := bob.Decrypt(nil, second); err != ErrAuth {
+	if _, err := bob.Decrypt(nil, second); !errors.Is(err, ErrAuth) {
 		t.Errorf("an out-of-order message opened: %v", err)
 	}
 	if _, err := bob.Decrypt(nil, first); err != nil {

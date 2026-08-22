@@ -435,7 +435,8 @@ func UnpackName(buf []byte, offset int) (string, int, error) {
 			if target >= offset {
 				return "", 0, fmt.Errorf("%w: compression pointer at %d points forward to %d", ErrBadName, offset, target)
 			}
-			if hops++; hops > maxPointerHops {
+			hops++
+			if hops > maxPointerHops {
 				return "", 0, fmt.Errorf("%w: too many compression pointers", ErrBadName)
 			}
 			if !jumped {

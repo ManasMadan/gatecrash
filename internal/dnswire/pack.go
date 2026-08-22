@@ -2,6 +2,7 @@ package dnswire
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -76,7 +77,7 @@ func packFlags(h Header) uint16 {
 // AddQuestion appends a question.
 func (b *Builder) AddQuestion(q Question) error {
 	if b.section > sectionQuestion {
-		return fmt.Errorf("dnswire: question added after a record")
+		return errors.New("dnswire: question added after a record")
 	}
 	if err := b.appendName(q.Name); err != nil {
 		return err
@@ -91,10 +92,11 @@ func (b *Builder) AddQuestion(q Question) error {
 	return nil
 }
 
-// AddAnswer, AddAuthority and AddAdditional append records to their sections.
+// AddAnswer appends a record to the answer section. AddAuthority and
+// AddAdditional do the same for theirs.
 func (b *Builder) AddAnswer(r Record) error {
 	if b.section > sectionAnswer {
-		return fmt.Errorf("dnswire: answer added after a later section")
+		return errors.New("dnswire: answer added after a later section")
 	}
 	b.section = sectionAnswer
 	if err := b.appendRecord(r); err != nil {
@@ -107,7 +109,7 @@ func (b *Builder) AddAnswer(r Record) error {
 // AddAuthority appends to the authority section.
 func (b *Builder) AddAuthority(r Record) error {
 	if b.section > sectionAuthority {
-		return fmt.Errorf("dnswire: authority added after an additional")
+		return errors.New("dnswire: authority added after an additional")
 	}
 	b.section = sectionAuthority
 	if err := b.appendRecord(r); err != nil {

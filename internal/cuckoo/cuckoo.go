@@ -129,9 +129,7 @@ func (f *Filter) Insert(key []byte) error {
 	index := i2
 	for kick := 0; kick < maxKicks; kick++ {
 		slot := int(splitmix(uint64(kick)^uint64(fingerprint)) % slotsPerBucket)
-		victim := f.buckets[index][slot]
-		f.buckets[index][slot] = fingerprint
-		fingerprint = victim
+		f.buckets[index][slot], fingerprint = fingerprint, f.buckets[index][slot]
 
 		index = f.alternate(index, fingerprint)
 		if f.insertInto(index, fingerprint) {

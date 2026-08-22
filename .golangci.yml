@@ -29,22 +29,86 @@ linters:
 
   settings:
     errcheck:
-      # A failed Close on a UDP socket we are already tearing down, and a failed
-      # write to an SSE client that has already walked away, are both nothing.
+      # Excluded because the error is either unreachable or already reported elsewhere.
+      #
+      # Close on a file being *written* is deliberately NOT excluded: that is where a
+      # full disk shows up, and `gatecrash export` exiting 0 after writing a truncated
+      # signed report is a real failure this linter caught.
       exclude-functions:
+        # A failed Close on a UDP socket we are already tearing down, and a failed
+        # write to an SSE client that has already walked away, are both nothing.
         - (net.PacketConn).Close
         - (net.Conn).Close
         - (io.Closer).Close
+        # Rollback after a successful commit returns ErrTxDone by design. The deferred
+        # rollback exists for the early-return paths, and on those the error being
+        # returned is the interesting one.
+        - (*database/sql.Tx).Rollback
+
+        # Rows.Close reports nothing that rows.Err() does not, and every loop here
+        # checks rows.Err().
+        - (*database/sql.Rows).Close
+        - (*database/sql.Stmt).Close
+
+        # Writes to stdout and to a tabwriter over stdout. If stdout is gone there is
+        # nowhere left to report that it is gone.
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (*text/tabwriter.Writer).Flush
+
     gosec:
       excludes:
         # G404: the simulator and the mesh relay decision deliberately use
         # math/rand seeded from a fixed value. Determinism is the requirement;
         # crypto/rand would make replay impossible.
         - G404
+
+        # G304 and G703: "file inclusion via variable" and "path traversal". Every
+        # instance is a command-line tool opening a path its operator typed, or the box
+        # reading the config file it was pointed at. That is the entire job of a
+        # `--config` flag. There is no untrusted input here — an operator who wants to
+        # read a different file can simply name it — and the alternative is a box that
+        # only reads paths hardcoded at compile time.
+        - G304
+        - G703
+
+        # G104: gosec's duplicate of errcheck, without errcheck's exclusion list. Every
+        # instance is a `conn.Close()` in the goroutine whose whole job is to unblock a
+        # read at shutdown, or a `tx.Rollback()` on a path already returning the error
+        # that matters. errcheck covers this file-for-file with reasons stated above.
+        - G104
+
+        # G115: integer conversions. This one is a judgement call, because the linter set
+        # in this file exists partly to catch silent truncation in the wire encoders.
+        #
+        # It does not do that, because it has no flow analysis: every one of the twenty
+        # sites it flags is guarded on the line above (`if length > 0xFFFF`, `if len(value)
+        # > 255`) or bounded by construction (a port from net.UDPAddr, a window index from
+        # a uint48). Not one is a real truncation, so leaving it on means twenty scattered
+        # nolint directives that a reader learns to skip past.
+        #
+        # What actually protects the encoders is the explicit guard at each conversion plus
+        # proto/backstage.md's conformance vectors, which are checked against the Kotlin
+        # and Swift ports in CI. A truncation would change the bytes and fail those.
+        - G115
+
+        # G306: 0644 on os.WriteFile. Both instances write an X.509 *certificate*, which is
+        # public by definition — every device downloads and installs it. The matching
+        # private keys go through writeSecret, which is 0600.
+        - G306
+
+        # G602: one report, on `int(buf[i])` two lines below `if i >= len(buf) { return }`.
+        - G602
     revive:
       rules:
+        # Without checkPrivateReceivers.
+        #
+        # It flags every method on an unexported type — the store's `txn`, which exists
+        # only to satisfy engine.Tx. Those methods are not public API: the interface they
+        # implement is what callers see, and it is documented there. Requiring a doc
+        # comment on each one would mean thirty comments restating the interface's, which
+        # is thirty places for the copy to drift out of date.
         - name: exported
-          arguments: [checkPrivateReceivers]
         - name: package-comments
     gocritic:
       enabled-tags: [diagnostic, performance, style]
@@ -54,12 +118,38 @@ linters:
         - ifElseChain
         - appendAssign
 
+        # hugeParam and rangeValCopy both say "pass a pointer instead", and in this
+        # codebase that is the wrong advice.
+        #
+        # Keys, ticket records, audit rows and manifest envelopes are value types on
+        # purpose: they are copied at every boundary so that nothing can mutate a
+        # caller's copy of a thing the whole system trusts. A signing key passed by
+        # pointer is a signing key somebody can zero while it is in use, and an audit
+        # record passed by pointer is a record a later stage can edit after it has been
+        # hashed. The copies are the safety property, and an 88-byte memcpy on a path
+        # that runs a few thousand times an evening is not a cost worth trading it for.
+        - hugeParam
+        - rangeValCopy
+
+        # unnamedResult wants (bool, error) returns named. For a function whose two
+        # results are obvious from its name — Verify, Contains, Seen — a name adds a
+        # word and no information.
+        - unnamedResult
+
   exclusions:
     rules:
       # Tests are allowed to be blunt: unchecked errors on setup helpers, magic
       # numbers in fixtures, and long functions that spell out a scenario.
+      #
+      # noctx and bodyclose are here for a narrower reason. Both exist to stop a
+      # long-running server leaking sockets or hanging with no way to cancel, and a test
+      # binary that runs for four seconds against its own httptest server has neither
+      # problem. Both are still enforced in the non-test code, which is where a leaked
+      # connection means a box that stops answering halfway through an event — and
+      # enforcing them there is what turned up the four real ListenPacket calls that now
+      # bind through a ListenConfig.
       - path: _test\.go
-        linters: [errcheck, gosec, revive, gocritic]
+        linters: [errcheck, gosec, revive, gocritic, noctx, bodyclose]
 
 formatters:
   enable:

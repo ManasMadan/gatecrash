@@ -478,13 +478,13 @@ func (w *world) pickGate(rng *Rand, id ticket.ID) venue.CheckpointCode {
 		return w.gates[rng.Intn(len(w.gates))]
 	}
 
-	switch seat := w.seats[id]; {
-	case seat.Section == "block-a":
+	switch seat := w.seats[id]; seat.Section {
+	case "block-a":
 		if rng.Chance(0.5) {
 			return "gate-north"
 		}
 		return "portal-lower"
-	case seat.Section == "golden-circle":
+	case "golden-circle":
 		if rng.Chance(0.4) {
 			return "gate-north"
 		}

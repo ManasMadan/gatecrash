@@ -266,35 +266,35 @@ func instruction(incoming *Node, from, to Node, a arc, leg Leg) string {
 	switch a.kind {
 	case EdgeStair:
 		if leg.LevelChange > 0 {
-			return fmt.Sprintf("Take the stairs up to %s", destination)
+			return "Take the stairs up to " + destination
 		}
 		if leg.LevelChange < 0 {
-			return fmt.Sprintf("Take the stairs down to %s", destination)
+			return "Take the stairs down to " + destination
 		}
-		return fmt.Sprintf("Take the steps to %s", destination)
+		return "Take the steps to " + destination
 	case EdgeLift:
 		if leg.LevelChange != 0 {
 			return fmt.Sprintf("Take the lift to level %d for %s", to.Level, destination)
 		}
-		return fmt.Sprintf("Take the lift to %s", destination)
+		return "Take the lift to " + destination
 	case EdgeRamp:
-		return fmt.Sprintf("Follow the ramp to %s", destination)
+		return "Follow the ramp to " + destination
 	case EdgeDoor:
-		return fmt.Sprintf("Go through the doors to %s", destination)
+		return "Go through the doors to " + destination
 	}
 
 	if incoming == nil {
-		return fmt.Sprintf("Head for %s", destination)
+		return "Head for " + destination
 	}
 	switch turnOf(incoming.Position, from.Position, to.Position) {
 	case turnLeft:
-		return fmt.Sprintf("Bear left towards %s", destination)
+		return "Bear left towards " + destination
 	case turnRight:
-		return fmt.Sprintf("Bear right towards %s", destination)
+		return "Bear right towards " + destination
 	case turnBack:
-		return fmt.Sprintf("Turn around and head for %s", destination)
+		return "Turn around and head for " + destination
 	default:
-		return fmt.Sprintf("Continue to %s", destination)
+		return "Continue to " + destination
 	}
 }
 

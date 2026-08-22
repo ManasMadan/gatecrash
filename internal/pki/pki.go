@@ -564,8 +564,10 @@ func (a *Authority) LeafExpiry() time.Time {
 	return a.leaf.Leaf.NotAfter
 }
 
-// Names and Addrs return what the serving certificate covers.
-func (a *Authority) Names() []string     { return append([]string(nil), a.names...) }
+// Names returns the DNS names the serving certificate covers.
+func (a *Authority) Names() []string { return append([]string(nil), a.names...) }
+
+// Addrs returns the IP addresses it covers.
 func (a *Authority) Addrs() []netip.Addr { return append([]netip.Addr(nil), a.addrs...) }
 
 // randomSerial returns a 128-bit certificate serial.

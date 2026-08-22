@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"testing"
 	"time"
 
@@ -88,7 +89,7 @@ func TestFramesFitInOneAdvertisement(t *testing.T) {
 	}
 
 	frame.Body = make([]byte, MaxBodySize+1)
-	if _, err := frame.Encode(); err != ErrTooLong {
+	if _, err := frame.Encode(); !errors.Is(err, ErrTooLong) {
 		t.Errorf("an oversized frame encoded: %v", err)
 	}
 }
@@ -149,14 +150,14 @@ func TestDecodeRejectsWhatItShould(t *testing.T) {
 		"index past total":     {func(b []byte) []byte { c := clone(b); c[2] |= byte(FlagFragment); c[16] = 5; c[17] = 3; return c }, ErrBadFragile},
 		"position without bit": {func(b []byte) []byte { c := clone(b); c[17] = 3; return c }, ErrBadFragile},
 	} {
-		if _, err := Decode(tc.mutate(raw)); err != tc.want {
+		if _, err := Decode(tc.mutate(raw)); !errors.Is(err, tc.want) {
 			t.Errorf("%s: error is %v, want %v", name, err, tc.want)
 		}
 	}
 
 	long := make([]byte, MaxFrame+1)
 	long[0] = Version
-	if _, err := Decode(long); err != ErrTooLong {
+	if _, err := Decode(long); !errors.Is(err, ErrTooLong) {
 		t.Errorf("an oversized frame decoded: %v", err)
 	}
 }
@@ -486,7 +487,7 @@ func TestFragmentsGetTheirOwnDedupKey(t *testing.T) {
 // everybody else's memory.
 func TestReassemblyIsBounded(t *testing.T) {
 	if _, err := Fragment(Frame{Kind: KindChannel, ID: msgID(1)},
-		bytes.Repeat([]byte("x"), MaxFragments*MaxBodySize+1)); err != ErrTooBig {
+		bytes.Repeat([]byte("x"), MaxFragments*MaxBodySize+1)); !errors.Is(err, ErrTooBig) {
 		t.Errorf("an oversized message was fragmented: %v", err)
 	}
 
@@ -540,7 +541,7 @@ func TestReassemblyRejectsInconsistentFragments(t *testing.T) {
 	}
 
 	// The same piece twice.
-	if _, _, err := r.Accept(frames[0]); err != ErrDuplicate {
+	if _, _, err := r.Accept(frames[0]); !errors.Is(err, ErrDuplicate) {
 		t.Errorf("a repeated fragment: %v", err)
 	}
 
@@ -548,7 +549,7 @@ func TestReassemblyRejectsInconsistentFragments(t *testing.T) {
 	// or an attempt to corrupt a reassembly in progress.
 	confused := frames[1]
 	confused.FragmentTotal = 9
-	if _, _, err := r.Accept(confused); err != ErrMismatch {
+	if _, _, err := r.Accept(confused); !errors.Is(err, ErrMismatch) {
 		t.Errorf("a fragment with the wrong total: %v", err)
 	}
 }
@@ -583,7 +584,7 @@ func TestAChannelMessageIsSealedAgainstItsOwnHeader(t *testing.T) {
 
 	// And a phone in a different channel does not pay for a decryption to find out.
 	other := meshcrypto.DeriveChannelKey("EVENT", "vip", "different")
-	if _, err := OpenChannelMessage(frames[0], other); err != meshcrypto.ErrNotForUs {
+	if _, err := OpenChannelMessage(frames[0], other); !errors.Is(err, meshcrypto.ErrNotForUs) {
 		t.Errorf("error for another channel is %v", err)
 	}
 }

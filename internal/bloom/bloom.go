@@ -61,7 +61,7 @@ const DefaultSeed uint64 = 0x9E3779B97F4A7C15
 //
 // Both are rounded up. A filter that is slightly too big has a slightly better
 // false positive rate than requested, which is the correct direction to err.
-func Sizing(expected int, falsePositiveRate float64) (bits, hashes uint64, err error) {
+func Sizing(expected int, falsePositiveRate float64) (bitCount, hashes uint64, err error) {
 	if expected <= 0 {
 		return 0, 0, fmt.Errorf("bloom: expected element count must be positive, got %d", expected)
 	}
@@ -276,11 +276,11 @@ func (f *Filter) UnmarshalBinary(data []byte) error {
 			ErrBadWire, m, words, len(data)-headerLen)
 	}
 
-	bits := make([]uint64, words)
-	for i := range bits {
-		bits[i] = binary.LittleEndian.Uint64(data[headerLen+i*8:])
+	bitWords := make([]uint64, words)
+	for i := range bitWords {
+		bitWords[i] = binary.LittleEndian.Uint64(data[headerLen+i*8:])
 	}
-	f.bits, f.m, f.k, f.n, f.seed = bits, m, k, n, seed
+	f.bits, f.m, f.k, f.n, f.seed = bitWords, m, k, n, seed
 	return nil
 }
 

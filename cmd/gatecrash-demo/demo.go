@@ -78,7 +78,7 @@ func runDemo(keep string, quiet bool) error {
 			return err
 		}
 		dir = temp
-		defer os.RemoveAll(temp)
+		defer func() { _ = os.RemoveAll(temp) }()
 	} else if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func runDemo(keep string, quiet bool) error {
 		return err
 	}
 	defer d.server.Close()
-	defer d.store.Close()
+	defer func() { _ = d.store.Close() }()
 
 	d.banner("Gatecrash demo", "a whole event, in one process, over real HTTP")
 	d.note("box            %s", d.server.URL)
@@ -350,7 +350,7 @@ func (d *demo) request(method, path, token string, body, into any) error {
 		}
 		reader = bytes.NewReader(raw)
 	}
-	req, err := http.NewRequest(method, d.server.URL+path, reader)
+	req, err := http.NewRequestWithContext(context.Background(), method, d.server.URL+path, reader)
 	if err != nil {
 		return err
 	}

@@ -80,13 +80,13 @@ func Open(ctx context.Context, opts Options) (*Store, error) {
 	}
 	reader, err := openPool(ctx, dsn, opts.Readers, opts.Synchronous)
 	if err != nil {
-		writer.Close()
+		_ = writer.Close()
 		return nil, err
 	}
 
 	s := &Store{writer: writer, reader: reader, path: opts.Path, now: opts.Now}
 	if err := s.migrate(ctx); err != nil {
-		s.Close()
+		_ = s.Close()
 		return nil, err
 	}
 	return s, nil
@@ -124,7 +124,7 @@ func openPool(ctx context.Context, dsn string, maxOpen int, synchronous string) 
 	}
 	for _, pragma := range pragmas {
 		if _, err := db.ExecContext(ctx, pragma); err != nil {
-			db.Close()
+			_ = db.Close()
 			return nil, fmt.Errorf("store: %s: %w", pragma, err)
 		}
 	}

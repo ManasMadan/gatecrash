@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ManasMadan/gatecrash/internal/audit"
@@ -328,7 +329,7 @@ func (t *txn) SetAuditHead(head merkle.Hash, rows uint64) error {
 	if err := t.setMeta(metaAuditHead, hex.EncodeToString(head[:])); err != nil {
 		return err
 	}
-	return t.setMeta(metaAuditRows, fmt.Sprintf("%d", rows))
+	return t.setMeta(metaAuditRows, strconv.FormatUint(rows, 10))
 }
 
 // Meta helpers. The meta table is transactional with the data it describes,

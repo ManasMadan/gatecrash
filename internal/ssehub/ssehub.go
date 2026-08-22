@@ -19,6 +19,7 @@ package ssehub
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -254,6 +255,11 @@ func (h *Hub) Handler(opts HandlerOptions) http.Handler {
 						continue
 					}
 					if err := write(w, event); err != nil {
+						if errors.Is(err, ErrUnencodable) {
+							h.log.Error("ssehub: skipping an event that will not encode",
+								"seq", event.Seq, "error", err)
+							continue
+						}
 						return
 					}
 				}
@@ -279,7 +285,11 @@ func (h *Hub) Handler(opts HandlerOptions) http.Handler {
 
 			case event := <-sub.events:
 				if err := write(w, event); err != nil {
-					return
+					if !errors.Is(err, ErrUnencodable) {
+						return
+					}
+					h.log.Error("ssehub: skipping an event that will not encode",
+						"seq", event.Seq, "error", err)
 				}
 				// Drain whatever else is buffered before flushing, so a burst of
 				// admissions costs one syscall rather than one per scan.
@@ -288,7 +298,11 @@ func (h *Hub) Handler(opts HandlerOptions) http.Handler {
 					select {
 					case next := <-sub.events:
 						if err := write(w, next); err != nil {
-							return
+							if !errors.Is(err, ErrUnencodable) {
+								return
+							}
+							h.log.Error("ssehub: skipping an event that will not encode",
+								"seq", next.Seq, "error", err)
 						}
 					default:
 						drained = false
@@ -329,14 +343,22 @@ func resumeFrom(r *http.Request) (uint64, bool) {
 	return 0, false
 }
 
+// ErrUnencodable means one event could not be marshalled.
+//
+// Distinguished from a write failure because the two want opposite handling: a broken
+// connection means stop, and a payload that will not encode means skip this one and
+// carry on. Tearing down every gate's stream over one bad row would turn a bug in one
+// event into an outage.
+var ErrUnencodable = errors.New("ssehub: event payload will not encode")
+
 // write emits one event in SSE framing.
 func write(w http.ResponseWriter, event Event) error {
 	payload, err := json.Marshal(event.Data)
 	if err != nil {
-		// A payload that will not encode is a bug, not a client problem. Skipping
-		// it keeps the stream alive rather than tearing down every gate's
-		// connection over one bad row.
-		return nil
+		// Reported rather than swallowed. This used to return nil, which kept the
+		// stream alive and meant nobody ever found out — a bug that is invisible is a
+		// bug that stays.
+		return fmt.Errorf("%w: %w", ErrUnencodable, err)
 	}
 	if event.Seq > 0 {
 		if _, err := fmt.Fprintf(w, "id: %d\n", event.Seq); err != nil {

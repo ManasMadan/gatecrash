@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ManasMadan/gatecrash/internal/engine"
@@ -204,7 +205,7 @@ func starterVenue(args []string) error {
 func seats(n int) []venue.Seat {
 	out := make([]venue.Seat, 0, n)
 	for i := 1; i <= n; i++ {
-		out = append(out, venue.Seat{Number: fmt.Sprint(i)})
+		out = append(out, venue.Seat{Number: strconv.Itoa(i)})
 	}
 	return out
 }
@@ -625,10 +626,10 @@ func splitList(value string) []string {
 }
 
 func trim(s string) string {
-	for len(s) > 0 && (s[0] == ' ' || s[0] == '\t') {
+	for s != "" && (s[0] == ' ' || s[0] == '\t') {
 		s = s[1:]
 	}
-	for len(s) > 0 && (s[len(s)-1] == ' ' || s[len(s)-1] == '\t') {
+	for s != "" && (s[len(s)-1] == ' ' || s[len(s)-1] == '\t') {
 		s = s[:len(s)-1]
 	}
 	return s

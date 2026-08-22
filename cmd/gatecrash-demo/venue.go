@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ManasMadan/gatecrash/internal/engine"
@@ -189,7 +189,7 @@ func (d *demo) issue(tier venue.TierCode, seat venue.SeatRef, format engine.Form
 func numbered(n int) []venue.Seat {
 	out := make([]venue.Seat, 0, n)
 	for i := 1; i <= n; i++ {
-		out = append(out, venue.Seat{Number: fmt.Sprint(i)})
+		out = append(out, venue.Seat{Number: strconv.Itoa(i)})
 	}
 	return out
 }

@@ -517,7 +517,8 @@ func (s *Server) Pool() (start, end netip.Addr, size int) {
 
 // ListenAndServe serves DHCP until the context is cancelled.
 func (s *Server) ListenAndServe(ctx context.Context, iface string) error {
-	conn, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", ServerPort))
+	var listener net.ListenConfig
+	conn, err := listener.ListenPacket(ctx, "udp4", fmt.Sprintf(":%d", ServerPort))
 	if err != nil {
 		return fmt.Errorf("dhcp: listening on :%d: %w", ServerPort, err)
 	}

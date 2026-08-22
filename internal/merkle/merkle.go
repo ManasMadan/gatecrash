@@ -72,7 +72,7 @@ func ParseHash(text string) (Hash, error) {
 	}
 	raw, err := hex.DecodeString(text)
 	if err != nil {
-		return Hash{}, fmt.Errorf("%w: %q: %v", ErrBadHash, text, err)
+		return Hash{}, fmt.Errorf("%w: %q: %w", ErrBadHash, text, err)
 	}
 	var out Hash
 	copy(out[:], raw)

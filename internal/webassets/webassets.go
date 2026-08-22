@@ -126,7 +126,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Hashed asset filenames are immutable, so they get a year. Everything else gets
 	// nothing, because a stale index.html on a scanner is a scanner running last
@@ -160,7 +160,7 @@ func (h *handler) open(name string) (fs.File, fs.FileInfo, error) {
 	}
 	info, err := file.Stat()
 	if err != nil || info.IsDir() {
-		file.Close()
+		_ = file.Close()
 		if err == nil {
 			err = fs.ErrNotExist
 		}

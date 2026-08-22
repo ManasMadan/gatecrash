@@ -1,7 +1,7 @@
 package venue
 
 import (
-	"fmt"
+	"errors"
 	"sort"
 	"time"
 )
@@ -356,7 +356,7 @@ type NearestAmenitiesRequest struct {
 // telling somebody to go there is how they end up somewhere else entirely.
 func (v *Venue) NearestAmenities(req NearestAmenitiesRequest) ([]NearbyAmenity, error) {
 	if req.From == "" {
-		return nil, fmt.Errorf("venue: nearest amenities needs a starting node")
+		return nil, errors.New("venue: nearest amenities needs a starting node")
 	}
 	if _, ok := v.nodes[req.From]; !ok {
 		return nil, codeError("map node", string(req.From), "starting node does not exist")

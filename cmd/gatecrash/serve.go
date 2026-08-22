@@ -894,7 +894,7 @@ func (b *box) watchGates(ctx context.Context) error {
 				b.raise(incident.Report{
 					Kind:       incident.GateOffline,
 					Checkpoint: gate.Code,
-					Note:       fmt.Sprintf("%s was working and has not scanned anything for a while.", gate.Name),
+					Note:       gate.Name + " was working and has not scanned anything for a while.",
 				})
 			}
 		}

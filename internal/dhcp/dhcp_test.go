@@ -244,8 +244,8 @@ func TestRequestForAnotherServerIsIgnored(t *testing.T) {
 	// last.
 	s, _ := newServer(t)
 	response := s.Handle(client("aa:bb:cc:dd:ee:08", Request, map[byte][]byte{
-		OptRequestedIP: []byte{10, 11, 0, 50},
-		OptServerID:    []byte{10, 11, 0, 254},
+		OptRequestedIP: {10, 11, 0, 50},
+		OptServerID:    {10, 11, 0, 254},
 	}))
 	if response != nil {
 		t.Fatal("the server answered a request addressed to another server")

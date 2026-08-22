@@ -57,8 +57,8 @@ import (
 // rather than producing keys that almost match.
 const ProtocolName = "Noise_XX_25519_ChaChaPoly_SHA256"
 
+// DHLen, HashLen and KeyLen are the sizes the pattern above is written against.
 const (
-	// DHLen, HashLen and KeyLen are the sizes the pattern above is written against.
 	DHLen   = 32
 	HashLen = 32
 	KeyLen  = chacha20poly1305.KeySize
@@ -766,6 +766,9 @@ func (t *Transport) Wipe() {
 	t.receive.Wipe()
 }
 
-// SentCount and ReceivedCount expose the counters, for the mesh's own bookkeeping.
-func (t *Transport) SentCount() uint64     { return t.send.Nonce() }
+// SentCount reports how many messages this side has sent, for the mesh's own
+// bookkeeping.
+func (t *Transport) SentCount() uint64 { return t.send.Nonce() }
+
+// ReceivedCount reports how many it has accepted.
 func (t *Transport) ReceivedCount() uint64 { return t.receive.Nonce() }

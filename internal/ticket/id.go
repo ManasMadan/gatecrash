@@ -106,14 +106,14 @@ func ParseID(s string) (ID, error) {
 	case EncodedIDLen:
 		decoded, err := encoding.DecodeString(s)
 		if err != nil {
-			return ID{}, fmt.Errorf("%w: %q: %v", ErrBadID, s, err)
+			return ID{}, fmt.Errorf("%w: %q: %w", ErrBadID, s, err)
 		}
 		copy(id[:], decoded)
 		return id, nil
 	case hex.EncodedLen(IDLen):
 		decoded, err := hex.DecodeString(s)
 		if err != nil {
-			return ID{}, fmt.Errorf("%w: %q: %v", ErrBadID, s, err)
+			return ID{}, fmt.Errorf("%w: %q: %w", ErrBadID, s, err)
 		}
 		copy(id[:], decoded)
 		return id, nil

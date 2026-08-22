@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/ManasMadan/gatecrash/internal/cuckoo"
@@ -499,7 +500,7 @@ func deliver(cfg CrowdConfig, nodes []*node, airborne []transmission, radio *Ran
 		// never engaged. The measured effect was a feedback loop: more relays, more
 		// collisions, fewer observations, more relays.
 		for _, tx := range heard {
-			receiver.router.Observe(mesh.PeerID(fmt.Sprint(tx.from)))
+			receiver.router.Observe(mesh.PeerID(strconv.Itoa(tx.from)))
 		}
 
 		// Collisions. Two transmissions arriving within the collision window at the
@@ -564,7 +565,7 @@ func deliver(cfg CrowdConfig, nodes []*node, airborne []transmission, radio *Ran
 			}
 			receiver.met[tx.from] = now
 
-			decision := receiver.router.Handle(tx.frame, mesh.PeerID(fmt.Sprint(tx.from)))
+			decision := receiver.router.Handle(tx.frame, mesh.PeerID(strconv.Itoa(tx.from)))
 			if decision.Deliver {
 				if _, already := receiver.received[tx.frame.ID]; !already {
 					receiver.received[tx.frame.ID] = now

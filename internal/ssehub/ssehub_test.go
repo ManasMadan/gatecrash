@@ -3,9 +3,10 @@ package ssehub
 import (
 	"bufio"
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -130,7 +131,7 @@ func TestEveryEventCarriesItsSequenceAsTheSSEID(t *testing.T) {
 	}
 	for seq := 1; seq <= 5; seq++ {
 		id, _, _ := readEvent(t, reader)
-		if id != fmt.Sprint(seq) {
+		if id != strconv.Itoa(seq) {
 			t.Fatalf("event %d carries id %q", seq, id)
 		}
 	}
@@ -444,7 +445,7 @@ func TestReplayErrorDoesNotBreakTheStream(t *testing.T) {
 
 	opts := HandlerOptions{
 		Replay: func(_ context.Context, _ uint64) ([]Event, error) {
-			return nil, fmt.Errorf("the database is busy")
+			return nil, errors.New("the database is busy")
 		},
 	}
 	reader, done := stream(t, h, opts, nil, "from=5")
