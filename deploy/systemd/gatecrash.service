@@ -1,0 +1,102 @@
+[Unit]
+# The box. One binary, one config file, one data directory.
+Description=Gatecrash — event ticketing and venue communication
+Documentation=https://github.com/ManasMadan/gatecrash
+
+# Only the network *stack* is required, not connectivity. A box in a field with no
+# uplink is the normal case, and waiting for network-online.target would mean the
+# gates come up minutes late or not at all.
+After=network.target
+Wants=network.target
+
+# If the clock is wildly wrong the certificate looks not-yet-valid, so a time sync
+# is worth waiting for when one is available — but only when. StartLimit below
+# ensures a box with no internet still boots.
+After=time-sync.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+
+ExecStart=/usr/local/bin/gatecrash serve --config /etc/gatecrash/config.json
+
+# Reload the manifest without dropping a single scan. The gates keep working while
+# this happens because the listeners are never torn down.
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart always, and fast. A box that crashed at 21:40 with four thousand people
+# inside has to be back before anybody at a gate notices. Two seconds is long enough
+# for the port to be released and short enough that a queue does not form.
+Restart=always
+RestartSec=2s
+
+# No start-rate limit. The default gives up after five restarts in ten seconds and
+# leaves the service dead — which is the correct behaviour for a web app and exactly
+# the wrong behaviour for the only thing standing between a crowd and a locked gate.
+# A box in a crash loop that keeps trying is strictly better than one that has given
+# up, because a crash loop still admits people between crashes.
+StartLimitIntervalSec=0
+
+# Killed politely, then firmly. The box finishes the transaction it is in the middle
+# of — an interrupted SQLite commit is the one thing the WAL cannot make invisible —
+# and thirty seconds is far longer than it needs.
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+User=gatecrash
+Group=gatecrash
+
+# Ports 80 and 443 need a capability, not root. A box that runs as root to bind a
+# port is a box where a bug in the DNS parser owns the machine.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Hardening. The box parses DNS, DHCP and HTTP from anybody within Wi-Fi range of a
+# field full of strangers, so it gets the full set.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# The only writable paths. Everything else is read-only, which is also what makes an
+# A/B update safe: the running box cannot scribble on the other slot.
+ReadWritePaths=/var/lib/gatecrash
+StateDirectory=gatecrash
+StateDirectoryMode=0700
+
+# The heartbeat. The box pings the watchdog from the goroutine that serves scans, so
+# a hung request loop is a restart rather than a silent stall — a box that answers
+# systemd but not a scanner is worse than one that is plainly down.
+WatchdogSec=30s
+
+# Journal only. An event runs off an SD card, and a card that spends its write
+# endurance on log files is a card that fails during the show.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gatecrash
+
+Environment=GATECRASH_LOG_JSON=1
+
+# The admin token and the manifest passphrase live here, 0600 and root-owned, rather
+# than in the unit — a unit file is world-readable and ends up in a git repository.
+EnvironmentFile=-/etc/gatecrash/secrets.env
+
+[Install]
+WantedBy=multi-user.target
