@@ -189,6 +189,56 @@ jobs:
         # tests, so a divergence fails here instead of at a gate.
         run: ./scripts/check-conformance.sh
 
+  ports:
+    name: ports
+    # The mesh protocol exists three times — Go for the box, Kotlin for Android, Swift
+    # for iOS — and three implementations that *almost* agree is worse than one. A
+    # disagreement does not look like a failing test, it looks like a message that never
+    # arrives, so both ports are checked against fixtures the Go side generates.
+    #
+    # Neither job needs an SDK, an emulator or a device: the protocol layer imports
+    # nothing from Android or CoreBluetooth precisely so this can run here.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - port: kotlin
+            os: ubuntu-latest
+          - port: swift
+            # macOS, because the Swift port is what runs on iPhones and the toolchain
+            # there is the one it will be built with.
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: the Go fixtures are current
+        # Run first. If the reference has moved and the fixtures were not regenerated,
+        # the port failures below would be misleading — they would look like port bugs.
+        run: go test ./internal/mesh -run Conformance
+
+      - name: set up kotlin
+        if: matrix.port == 'kotlin'
+        run: |
+          curl -sSL https://get.sdkman.io | bash
+          set +u
+          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          sdk install kotlin
+          echo "$HOME/.sdkman/candidates/kotlin/current/bin" >> "$GITHUB_PATH"
+
+      - name: the kotlin port agrees with the reference
+        if: matrix.port == 'kotlin'
+        run: ./apps/backstage-android/verify.sh
+
+      - name: the swift port agrees with the reference
+        if: matrix.port == 'swift'
+        run: ./apps/backstage-ios/verify.sh
+
   end-to-end:
     name: end-to-end
     runs-on: ubuntu-latest
