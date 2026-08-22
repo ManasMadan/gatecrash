@@ -1,0 +1,554 @@
+/*
+ * The control room.
+ *
+ * Dark-first and high contrast, because this screen is usually on a laptop in a
+ * badly-lit back room or projected onto a wall — and a light dashboard on a
+ * projector in a lit room is unreadable.
+ *
+ * The information hierarchy is the opposite of the scanner's. A guard needs one
+ * enormous thing; an operator needs many things at once and needs to be able to spot
+ * the one that changed. So this is a dense grid with a lot of tabular numbers, and
+ * the only loud element in it is an unacknowledged alarm.
+ */
+
+#root {
+  min-height: 100dvh;
+}
+
+.shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--gc-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gc-pad);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--gc-pad);
+  flex-wrap: wrap;
+}
+
+.topbar h1 {
+  font-size: var(--gc-large);
+  font-weight: 800;
+  margin: 0;
+  flex: 1;
+  min-width: 12rem;
+}
+
+.topbar__mode {
+  font-size: var(--gc-micro);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--gc-surface-raised);
+  border: 1px solid var(--gc-line);
+  color: var(--gc-text-dim);
+}
+
+/* Degraded mode is stated in the interface, not buried in a config file. An
+ * operator should never be surprised to learn their gates are admitting during a
+ * partition. */
+.topbar__mode[data-mode='degraded'] {
+  border-color: var(--gc-redirect);
+  color: var(--gc-redirect);
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  padding: 8px 14px;
+  border-radius: var(--gc-radius);
+  background: var(--gc-surface);
+  border: 1px solid var(--gc-line);
+  color: var(--gc-text-dim);
+  font-weight: 700;
+  font-size: var(--gc-small);
+  min-height: 40px;
+}
+
+.tabs button[aria-selected='true'] {
+  background: var(--gc-surface-raised);
+  color: var(--gc-text);
+  border-color: var(--gc-accent);
+}
+
+.tabs__badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--gc-emergency);
+  color: #fff;
+  font-size: var(--gc-micro);
+  font-weight: 800;
+}
+
+/* The headline numbers. Four tiles, because five is more than anybody reads at a
+ * glance and three leaves out something that matters. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--gc-gap);
+}
+
+.tile {
+  background: var(--gc-surface);
+  border: 1px solid var(--gc-line);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-pad);
+}
+
+.tile__label {
+  font-size: var(--gc-micro);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gc-text-faint);
+}
+
+.tile__value {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.tile__detail {
+  font-size: var(--gc-small);
+  color: var(--gc-text-dim);
+  margin-top: 2px;
+}
+
+.tile--alarm {
+  border-color: var(--gc-emergency);
+  background: color-mix(in srgb, var(--gc-emergency) 14%, var(--gc-surface));
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--gc-pad);
+  align-items: start;
+}
+
+.panel {
+  background: var(--gc-surface);
+  border: 1px solid var(--gc-line);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-pad);
+}
+
+.panel h2 {
+  margin: 0 0 var(--gc-gap);
+  font-size: var(--gc-micro);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gc-text-faint);
+}
+
+/* Occupancy meters. The bar is the point: a number tells you a zone has 412 people
+ * in it, a bar tells you it is nearly full. */
+.meter {
+  margin-bottom: var(--gc-gap);
+}
+
+.meter__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--gc-gap);
+  font-size: var(--gc-small);
+  font-weight: 700;
+}
+
+.meter__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--gc-text-dim);
+  font-weight: 600;
+}
+
+.meter__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gc-line);
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.meter__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gc-accent);
+  transition: width var(--gc-settle) ease-out;
+}
+
+/* Colour is a warning, not decoration: amber past 80%, red over capacity. */
+.meter__fill[data-state='busy'] {
+  background: var(--gc-warning);
+}
+.meter__fill[data-state='over'] {
+  background: var(--gc-emergency);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--gc-gap);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gc-line);
+  font-size: var(--gc-small);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row__name {
+  flex: 1 1 auto;
+  /* A gate called "North Gate" was rendering as "N…" once the sparkline and the
+   * figure had taken their width. The name is the part that tells an operator which
+   * gate they are looking at, so it holds a readable floor and the sparkline gives
+   * way instead — an SVG with a viewBox stays legible when it is squeezed. */
+  min-width: 5.5rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__figure {
+  font-variant-numeric: tabular-nums;
+  color: var(--gc-text-dim);
+  white-space: nowrap;
+}
+
+.row__flag {
+  font-size: var(--gc-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gc-redirect) 25%, transparent);
+  color: var(--gc-redirect);
+}
+
+/* Sparkline. Hand-drawn SVG rather than a chart library: it is twelve numbers and a
+ * polyline, and a charting dependency would be the largest thing in the bundle. */
+.spark {
+  height: 22px;
+  /* Shrinks before the name does. See .row__name. */
+  flex: 0 1 68px;
+  min-width: 0;
+}
+
+.spark polyline {
+  fill: none;
+  stroke: var(--gc-accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Incidents. The one loud thing in the interface. */
+.incident {
+  border: 1px solid var(--gc-line);
+  border-left-width: 4px;
+  border-radius: var(--gc-radius);
+  padding: var(--gc-gap);
+  margin-bottom: var(--gc-gap);
+  background: var(--gc-surface-raised);
+}
+
+.incident[data-severity='emergency'] {
+  border-left-color: var(--gc-emergency);
+  background: color-mix(in srgb, var(--gc-emergency) 16%, var(--gc-surface-raised));
+}
+.incident[data-severity='urgent'] {
+  border-left-color: var(--gc-urgent);
+}
+.incident[data-severity='warning'] {
+  border-left-color: var(--gc-warning);
+}
+.incident[data-severity='info'] {
+  border-left-color: var(--gc-info);
+}
+
+/* An unacknowledged emergency pulses. Nothing else in the interface moves, so this
+ * is unmissable — which is the entire requirement. */
+.incident[data-severity='emergency'][data-status='open'] {
+  animation: incident-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes incident-pulse {
+  50% {
+    border-left-color: #fff;
+    background: color-mix(in srgb, var(--gc-emergency) 32%, var(--gc-surface-raised));
+  }
+}
+
+.incident[data-status='resolved'],
+.incident[data-status='cancelled'] {
+  opacity: 0.55;
+}
+
+.incident__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gc-gap);
+  flex-wrap: wrap;
+}
+
+.incident__kind {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.incident__id {
+  font-family: var(--gc-font-mono);
+  font-size: var(--gc-micro);
+  color: var(--gc-text-faint);
+}
+
+.incident__where {
+  color: var(--gc-text-dim);
+  font-size: var(--gc-small);
+}
+
+.incident__elapsed {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: var(--gc-small);
+}
+
+/* An alarm open for more than a minute turns red. The number nobody wants to see
+ * climbing is the one this makes impossible to ignore. */
+.incident__elapsed[data-late='true'] {
+  color: var(--gc-emergency);
+}
+
+.incident__note {
+  margin: 6px 0 0;
+  font-size: var(--gc-small);
+  line-height: 1.5;
+}
+
+.incident__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: var(--gc-gap);
+  flex-wrap: wrap;
+}
+
+.incident__history {
+  margin: var(--gc-gap) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--gc-micro);
+  color: var(--gc-text-faint);
+  font-family: var(--gc-font-mono);
+}
+
+.button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--gc-radius);
+  background: var(--gc-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--gc-small);
+}
+
+.button--quiet {
+  background: var(--gc-surface);
+  border: 1px solid var(--gc-line);
+  color: var(--gc-text);
+}
+
+.button--danger {
+  background: var(--gc-deny);
+}
+
+.button:disabled {
+  opacity: 0.4;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--gc-gap);
+}
+
+.field label {
+  font-size: var(--gc-small);
+  font-weight: 700;
+  color: var(--gc-text-dim);
+}
+
+.field input,
+.field select,
+.field textarea {
+  min-height: 40px;
+  border-radius: var(--gc-radius);
+  border: 1px solid var(--gc-line);
+  background: var(--gc-surface-raised);
+  color: var(--gc-text);
+  padding: 8px var(--gc-gap);
+  font: inherit;
+}
+
+.checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--gc-radius);
+  background: var(--gc-surface-raised);
+  border: 1px solid var(--gc-line);
+  font-size: var(--gc-small);
+  font-weight: 600;
+}
+
+/* The enrollment QR. Printed or held up to a phone, so it is drawn large with a
+ * white quiet zone regardless of theme. */
+.invite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gc-gap);
+  padding: var(--gc-pad);
+  background: var(--gc-surface-raised);
+  border-radius: var(--gc-radius);
+  margin-top: var(--gc-gap);
+}
+
+.invite canvas {
+  background: #fff;
+  padding: 12px;
+  border-radius: var(--gc-radius);
+  width: min(80vw, 300px);
+  height: auto;
+}
+
+.invite__code {
+  font-family: var(--gc-font-mono);
+  font-size: var(--gc-large);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.invite__expiry {
+  font-size: var(--gc-small);
+  color: var(--gc-text-dim);
+}
+
+.mono {
+  font-family: var(--gc-font-mono);
+  font-size: var(--gc-micro);
+  word-break: break-all;
+  color: var(--gc-text-dim);
+  line-height: 1.7;
+}
+
+.map-frame {
+  height: min(70vh, 560px);
+}
+
+.muted {
+  color: var(--gc-text-dim);
+  font-size: var(--gc-small);
+  line-height: 1.55;
+}
+
+.error {
+  background: color-mix(in srgb, var(--gc-deny) 16%, var(--gc-surface));
+  border: 1px solid var(--gc-deny);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-gap);
+  font-size: var(--gc-small);
+  margin-bottom: var(--gc-gap);
+}
+
+.ok {
+  background: color-mix(in srgb, var(--gc-admit) 14%, var(--gc-surface));
+  border: 1px solid var(--gc-admit);
+  border-radius: var(--gc-radius);
+  padding: var(--gc-gap);
+  font-size: var(--gc-small);
+  margin-bottom: var(--gc-gap);
+}
+
+.verdict-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.verdict-bar {
+  display: grid;
+  grid-template-columns: 10rem 1fr 3rem;
+  align-items: center;
+  gap: var(--gc-gap);
+  font-size: var(--gc-small);
+}
+
+.verdict-bar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gc-text-dim);
+}
+
+.verdict-bar__track {
+  height: 6px;
+  background: var(--gc-line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.verdict-bar__fill {
+  height: 100%;
+  background: var(--gc-text-dim);
+}
+
+.verdict-bar__fill[data-kind='admit'] {
+  background: var(--gc-admit);
+}
+.verdict-bar__fill[data-kind='deny'] {
+  background: var(--gc-deny);
+}
+.verdict-bar__fill[data-kind='redirect'] {
+  background: var(--gc-redirect);
+}
+
+.verdict-bar__count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
