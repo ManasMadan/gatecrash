@@ -305,3 +305,27 @@ func (v *Venue) HasMap() bool { return v.plan.Map.Width > 0 && v.plan.Map.Height
 // one, wayfinding still names the right gate and section but cannot give
 // turn-by-turn steps.
 func (v *Venue) HasWalkGraph() bool { return len(v.adjacency) > 0 }
+
+// SeatLabel renders a seat the way it is printed on a ticket and shouted across a
+// concourse: with the section's name rather than its code.
+//
+// SeatRef.String is the code form, which is right for the audit log and wrong for
+// anybody's eyes — "block-a row A seat 1" is a database row, not a seat. This is
+// the only version an attendee or an usher should ever see.
+func (v *Venue) SeatLabel(ref SeatRef) string {
+	if ref.IsZero() {
+		return ""
+	}
+	name := string(ref.Section)
+	if section, ok := v.sections[ref.Section]; ok && section.Name != "" {
+		name = section.Name
+	}
+	switch {
+	case ref.Row == "" && ref.Seat == "":
+		return name
+	case ref.Seat == "":
+		return name + " row " + ref.Row
+	default:
+		return name + " row " + ref.Row + " seat " + ref.Seat
+	}
+}
