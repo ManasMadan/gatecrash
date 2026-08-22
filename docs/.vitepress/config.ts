@@ -85,6 +85,7 @@ export default defineConfig({
           text: 'Backstage',
           items: [
             { text: 'Mesh chat', link: '/guide/mesh' },
+            { text: 'The phone apps', link: '/guide/apps' },
             { text: 'The protocol', link: '/guide/mesh-protocol' },
           ],
         },

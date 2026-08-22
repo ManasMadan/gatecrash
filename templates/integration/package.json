@@ -1,0 +1,39 @@
+{
+  "name": "gatecrash-integration-example",
+  "version": "0.1.0",
+  "description": "gatecrash integration: appends admissions as NDJSON. Copy me to build your own.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "gatecrash",
+    "gatecrash-integration"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "gatecrash-client": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "gatecrash-client": "workspace:*",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

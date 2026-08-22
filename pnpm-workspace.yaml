@@ -4,6 +4,11 @@ packages:
   - apps/attendee
   - apps/dashboard
   - examples/*
+  # In the workspace so CI compiles it and runs its tests. A template that does not build
+  # is worse than no template: it is a starting point that costs an afternoon. Copying it
+  # out of the repo means changing the one `workspace:*` in its devDependencies to a
+  # version range — see its README.
+  - templates/*
   - docs
   - bench
   - demo

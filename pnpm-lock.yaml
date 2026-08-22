@@ -236,6 +236,24 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/node@24.13.3)(jiti@2.6.1)(supports-color@7.2.0)(yaml@2.9.0)
 
+  templates/integration:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      gatecrash-client:
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(supports-color@7.2.0)(typescript@5.9.3)(yaml@2.9.0)
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@24.13.3)(jiti@2.6.1)(supports-color@7.2.0)(yaml@2.9.0)
+
 packages:
 
   '@algolia/abtesting@1.23.0':

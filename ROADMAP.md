@@ -6,16 +6,20 @@ lists the things that were considered and postponed, with the reason.
 
 ## Next
 
-**Backstage on Android and iOS.** The mesh protocol is written, tested and specified —
-frame format, dedup, relay rule, crypto, and a Noise XX transcript fixture the ports can
-be checked against. What is missing is the two platform layers: BLE advertising and GATT
-on Android, Core Bluetooth on iOS. They are the reason the protocol lives in one place
-and is ported rather than reinvented.
+**Backstage on two phones in a room.** Both apps are now built: the protocol, the BLE
+transport, and a screen. Android assembles a real APK in CI; iOS compiles every view and
+the whole Core Bluetooth layer under `swift build`, which works because Core Bluetooth and
+SwiftUI both exist on macOS.
 
-**A load rig with real percentiles.** `go test -bench` gives a mean, and a mean is the
-wrong statistic for a queue. What matters is the p99 of a scan under twelve gates of
-concurrent load, because the p99 is the guard standing there wondering if it worked.
-An HDR histogram and a coordinated-omission-free load generator.
+What has not happened is the only test that counts. Whether two handsets actually find
+each other across a field is not a thing any Mac can answer, and it is where the failures
+will be: Android's peripheral role is the least-travelled path in every vendor's stack,
+and iOS rewrites an advertisement out from under you when the app backgrounds. Everything
+above the radio is checked against the Go reference — frame format, dedup filter, relay
+probability, carry rule, Argon2id. Everything at the radio is checked by reading it.
+
+An `.ipa` also needs Xcode and a signing identity, which is why the iOS app is archived by
+hand rather than in CI. `apps/backstage-ios/README.md` has the steps.
 
 **A cable-pull rig.** The simulator drops the box's power hundreds of times a run, and
 that is a model. A smart plug, a real Pi, a real SD card and a hundred real power cuts

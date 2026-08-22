@@ -1,0 +1,50 @@
+# gatecrash
+
+> Self-hosted event ticketing that works when the network does not. One static Go binary on a Raspberry Pi at the venue, holding the whole event in SQLite. Scanners are PWAs over the box's own Wi-Fi; a ticket is redeemed exactly once by a single `INSERT ... ON CONFLICT DO NOTHING`, which is the linearization point of the entire system. No cloud, no vendor, no per-scan API call to somewhere with worse uptime than a gate.
+
+Key facts:
+
+- Exactly-once redemption is one SQLite insert, not a distributed protocol. Everything else — audit chain, Merkle root, stats — is derived from that row.
+- Two consistency modes, chosen by the organizer and signed into the manifest: STRICT (CP — during a scanner-to-box partition the gate goes amber and stops admitting) and DEGRADED (AP — the scanner keeps admitting from its local mirror and queues the scans; double use becomes possible, and is detected and flagged within seconds of the network healing, with both records as evidence). Prevention under partition is impossible — that is CAP, not a shortcoming — so the choice is offered with the consequence written down. The mode is not a runtime toggle an operator can flip at 1am.
+- Offline is the normal case, not the failure case. A scanner holds a Bloom filter of every valid ticket (175 KB for 50,000 tickets, ~49 ns per query) so it can reject an unknown ticket with no box at all, and queues real decisions for reconciliation.
+- Tickets are Ed25519-signed and read offline: GC1 is static (134 chars, QR v7); GC2 rotates on 30-second HMAC windows with ±1 window tolerance, derived per-ticket via HKDF so a leaked screenshot expires.
+- The audit log is hash-chained and sealed into an RFC 6962 Merkle tree. `gatecrash attendance <ticket>` prints an inclusion proof a promoter can check against a published root without the database, the log, or any cooperation from the box.
+- Zone-aware access: per-zone tickets, per-scanner allowlists, sequenced prerequisites (zone B only after zone A, and only through a named door), directional checkpoints, and pass limits. Refusals name which rule fired.
+- Wayfinding is a compiled venue plan: zones, sections, rows, seats, checkpoints, amenities and a walk graph, with step-free routing. The attendee wallet draws the map and the route to the seat.
+- Backstage is optional Bluetooth mesh chat for crew when the phone signal has gone. Density-adaptive relay (p = min(1, k/neighbours), k=3), cuckoo-filter dedup, Noise XX, Argon2id channel keys. Implemented three times — Go, Kotlin, Swift — and checked against shared conformance vectors.
+- Correctness is argued by deterministic simulation, not by assertion: seeded event-days with injected power cuts, clock skew, partitions and redelivery. 1,600 event-days / 4.8M scans / 9,446 power cuts / 98,920 detected double-uses produced zero invariant violations, and every failure replays from its seed.
+- Measured: 12.3 MB static arm64 binary; ~2,300 scans/s over HTTP, ~3,200/s straight to SQLite; p99 20 ms at 120 scans/s across 12 gates; mesh delivery 99.4% at 5,000 nodes (p95 556 ms).
+
+## Guide
+
+- [What it is](https://gatecrash.mmadan.in/guide/what-it-is): the box, the threat model, and what is deliberately not cloud
+- [Try it](https://gatecrash.mmadan.in/guide/try-it): a whole event in one process, over real HTTP, in a minute
+- [Correctness](https://gatecrash.mmadan.in/guide/correctness): the single insert, STRICT vs DEGRADED, HLCs, and the simulator that argues for all of it
+- [When the box is unreachable](https://gatecrash.mmadan.in/guide/offline): Bloom filters, queued decisions, and why a scanner never guesses
+- [Scanning](https://gatecrash.mmadan.in/guide/scanning): the verdict screen, and why it is colour and shape before it is text
+- [Running an event](https://gatecrash.mmadan.in/guide/running-an-event): doors, enrolment, the control room, re-entry
+- [Incidents and staffing](https://gatecrash.mmadan.in/guide/incidents): a bouncer asking for help, scanner SOS, and what the dashboard does with it
+- [The venue](https://gatecrash.mmadan.in/guide/venue): zones, tiers, allowlists, sequenced access, directional doors
+- [Wayfinding](https://gatecrash.mmadan.in/guide/wayfinding): the walk graph, seat routing, amenities, step-free paths
+- [Mesh chat](https://gatecrash.mmadan.in/guide/mesh): what Backstage is for and what it deliberately is not
+- [The phone apps](https://gatecrash.mmadan.in/guide/apps): building them, offering them from the wallet, and exactly what is unverified
+- [The mesh protocol](https://gatecrash.mmadan.in/guide/mesh-protocol): frame format, relay rule, crypto, conformance vectors
+- [Deploying a box](https://gatecrash.mmadan.in/guide/deploying): Pi image, systemd, AP mode, hardening
+- [After the event](https://gatecrash.mmadan.in/guide/settlement): sealing, attendance proofs, and what to hand a promoter
+
+## Reference
+
+- [Verdicts](https://gatecrash.mmadan.in/reference/verdicts): every decision the engine can return, generated from the source
+- [HTTP API](https://gatecrash.mmadan.in/reference/http-api): scan, tickets, venue, stream, admin
+- [Configuration](https://gatecrash.mmadan.in/reference/config): the config file and what each field costs
+- [CLI](https://gatecrash.mmadan.in/reference/cli): serve, ingest, verify, seal, export, attendance, doctor
+- [Venue plan](https://gatecrash.mmadan.in/reference/venue-plan): the authoring format and how it compiles
+- [Packages](https://gatecrash.mmadan.in/reference/packages): gatecrash-client and gatecrash-ui
+
+## Optional
+
+- [Repository](https://github.com/ManasMadan/gatecrash)
+- [Integration template](https://github.com/ManasMadan/gatecrash/tree/master/templates/integration)
+- [Examples](https://github.com/ManasMadan/gatecrash/tree/master/examples)
+- [The mesh wire format](https://github.com/ManasMadan/gatecrash/blob/master/proto/backstage.md)
+- [Roadmap](https://github.com/ManasMadan/gatecrash/blob/master/ROADMAP.md): what is not built, and why
