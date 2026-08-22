@@ -25,12 +25,12 @@ LDFLAGS="$LDFLAGS -X github.com/ManasMadan/gatecrash/internal/version.Date=$DATE
 # developers and for the load rig.
 TARGETS="${GATECRASH_TARGETS:-linux/arm64 linux/amd64 linux/arm darwin/arm64 darwin/amd64}"
 
-mkdir -p bin
+mkdir -p dist
 
 for target in $TARGETS; do
   goos="${target%%/*}"
   goarch="${target##*/}"
-  out="bin/gatecrash-$goos-$goarch"
+  out="dist/gatecrash-$goos-$goarch"
 
   echo "==> $out"
   CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" GOARM=7 \
@@ -42,10 +42,19 @@ done
 
 # The side binaries are developer tools; they only ever run on a laptop or a CI
 # runner, so they are built for the host and nothing else.
-for tool in gatecrash-sim gatecrash-keys gatecrash-presale gatecrash-load; do
-  echo "==> bin/$tool"
-  CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o "bin/$tool" "./cmd/$tool"
+# Skipped rather than failed when a tool is not present: this list is also the
+# roadmap, and a build script that breaks because a planned command has not been
+# written yet is a build script somebody deletes a line from and forgets.
+for tool in gatecrash-sim gatecrash-keys gatecrash-demo gatecrash-presale gatecrash-load; do
+  # Checked for Go files rather than for a directory: an empty directory from a
+  # `mkdir` is exactly the state a planned-but-unwritten command is in.
+  compgen -G "./cmd/$tool/*.go" >/dev/null 2>&1 || {
+    echo "==> skipping $tool (not written yet)"
+    continue
+  }
+  echo "==> dist/$tool"
+  CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o "dist/$tool" "./cmd/$tool"
 done
 
 echo
-echo "Built $(ls bin | wc -l | tr -d ' ') artifacts into bin/"
+echo "Built $(ls dist | wc -l | tr -d ' ') artifacts into dist/"

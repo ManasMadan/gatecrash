@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # Weekly, grouped, and deliberately not daily. Every dependency bump is a chance to
+  # break the one property that matters — a single static binary that cross-compiles
+  # for a Pi — and a stream of individual pull requests is a stream nobody reads.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      go:
+        patterns: ['*']
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      # Split, because a tooling bump is a five-minute review and a React or Vite bump
+      # is a rebuild-and-check-the-bundles review.
+      tooling:
+        patterns: ['eslint*', 'prettier*', '@typescript-eslint/*', 'typescript', 'vitest', 'tsup']
+      runtime:
+        patterns: ['react*', 'vite*', '@vitejs/*', 'qrcode', 'jsqr']
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']
