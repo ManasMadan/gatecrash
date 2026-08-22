@@ -1,0 +1,38 @@
+# Trying gatecrash without installing anything.
+#
+# This is a showcase, not a deployment. A real box is one static binary on a Raspberry Pi;
+# see deploy/README.md for why there is no Docker in that story.
+
+services:
+  box:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+    ports:
+      # 8080 is plain HTTP: the CA certificate, the captive portal and /healthz — the things a
+      # device needs before it trusts the CA.
+      - '8080:8080'
+      # 8443 is HTTPS, which is where the apps are served, because the camera needs a secure
+      # context. Expect a certificate warning until the CA is installed; that warning is the
+      # enrollment ceremony working as designed.
+      - '8443:8443'
+    volumes:
+      - box-data:/var/lib/gatecrash
+    environment:
+      GATECRASH_LISTEN: ':8443'
+      GATECRASH_LISTEN_PLAIN: ':8080'
+      GATECRASH_LOG_LEVEL: info
+      # mDNS and the UDP beacon are how a scanner finds the box on a real network. Inside
+      # Docker's bridge they announce an address nothing else can reach, so they are off —
+      # which is also why this is a showcase rather than a deployment.
+      GATECRASH_MDNS: 'false'
+      GATECRASH_BEACON: 'false'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/healthz']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  box-data:

@@ -1,0 +1,13 @@
+{
+  "name": "@gatecrash/example-turnstile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A gate with no screen: scan, decide, pulse a relay.",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "gatecrash-client": "workspace:*"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@gatecrash/example-door-sales",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Issue a ticket at the door and admit it in one breath.",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "gatecrash-client": "workspace:*"
+  }
+}
