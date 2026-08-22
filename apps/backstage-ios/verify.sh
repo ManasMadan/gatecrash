@@ -30,18 +30,25 @@ swift --version
 # named at compile time, at link time and at run time. Without this the failure is
 # `no such module 'Testing'`, and then, confusingly, a successful build that cannot
 # dlopen its own test bundle.
+# Probe for the framework rather than inferring it from whether Xcode is installed.
+#
+# The first version branched on `xcode-select -p | grep Xcode.app`, which is wrong on a CI runner
+# where the path is `/Applications/Xcode_26.6.app/...` — the underscore means the grep misses, the
+# script takes the command-line-tools branch, and it then fails looking for a framework in a
+# directory Xcode does not use. Asking the filesystem where the framework actually is has no such
+# failure mode.
 FRAMEWORKS=""
 LIBRARIES=""
-if [[ "$(uname -s)" == "Darwin" ]] && ! xcode-select -p 2>/dev/null | grep -q "Xcode.app"; then
+if [[ "$(uname -s)" == "Darwin" ]]; then
   TOOLS="$(xcode-select -p)"
-  FRAMEWORKS="$TOOLS/Library/Developer/Frameworks"
-  LIBRARIES="$TOOLS/Library/Developer/usr/lib"
-
-  if [[ ! -d "$FRAMEWORKS/Testing.framework" ]]; then
-    echo "verify.sh: no Testing.framework under $FRAMEWORKS." >&2
-    echo "  Install Xcode, or a newer command-line tools package." >&2
-    exit 1
+  if [[ -d "$TOOLS/Library/Developer/Frameworks/Testing.framework" ]]; then
+    # A command-line-tools install keeps swift-testing outside the default search paths, and its
+    # interop dylib in a different directory again — so both have to be named at compile time, at
+    # link time and at run time.
+    FRAMEWORKS="$TOOLS/Library/Developer/Frameworks"
+    LIBRARIES="$TOOLS/Library/Developer/usr/lib"
   fi
+  # Otherwise a full Xcode, or a toolchain that bundles swift-testing, finds it unaided.
 fi
 
 echo

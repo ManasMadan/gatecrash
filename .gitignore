@@ -1,5 +1,15 @@
 node_modules/
 dist/
+
+# ...except the placeholder that keeps `internal/webassets` compiling.
+#
+# The box embeds the built web apps with `go:embed all:dist`, and an empty directory makes that
+# pattern fail with "no matching files found". A Go build that cannot succeed without first
+# running a JavaScript build is a hostile developer experience — and it broke CI, where the go
+# job deliberately does not install Node.
+!internal/webassets/dist/
+internal/webassets/dist/*
+!internal/webassets/dist/.gitkeep
 *.tsbuildinfo
 .DS_Store
 coverage/

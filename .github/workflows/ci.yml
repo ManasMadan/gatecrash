@@ -146,10 +146,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: build the protocol package first
-        # The apps' type-aware lint cannot resolve gatecrash-client until its
-        # declarations exist, so the order here is not incidental.
-        run: pnpm --filter gatecrash-client build
+      - name: build the packages first
+        # The apps import both gatecrash-client and gatecrash-ui, and typecheck cannot
+        # resolve either until its declarations exist — so this is not incidental
+        # ordering, it is a prerequisite. Building only the client is what broke this:
+        # `Cannot find module 'gatecrash-ui'`.
+        run: pnpm --filter gatecrash-client --filter gatecrash-ui build
 
       - run: pnpm -r typecheck
       - run: pnpm -r lint

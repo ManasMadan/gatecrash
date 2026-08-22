@@ -1,0 +1,7 @@
+This file exists so `go:embed all:dist` has something to match.
+
+Without it, `go build ./...` fails on a fresh checkout with "pattern all:dist: no matching files
+found" — because the real contents of this directory are produced by `pnpm -r build` and are
+gitignored. A Go build that first requires a JavaScript build is a hostile thing to hand
+somebody, and the box handles an assets-free binary deliberately: Handler returns nil and the
+API falls back to its own minimal page.
