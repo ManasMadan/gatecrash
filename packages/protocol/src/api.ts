@@ -135,6 +135,23 @@ export interface Meta {
   now: string
   gc2_window: number
   rotating: boolean
+
+  /**
+   * Where the optional Backstage mesh chat app can be had.
+   *
+   * Absent unless the organizer signed links into the manifest — deliberately, so the
+   * wallet shows nothing rather than a dead button. Nothing about a ticket depends on
+   * this: Backstage is for talking to people when the phone signal has gone.
+   */
+  backstage?: BackstageLinks
+}
+
+/** Install links for the optional mesh chat app. */
+export interface BackstageLinks {
+  android?: string
+  ios?: string
+  /** One line from the organizer about what the app is for. */
+  note?: string
 }
 
 export interface Assignment {

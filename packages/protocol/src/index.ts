@@ -19,6 +19,7 @@ export type {
   Amenity,
   Announcement,
   Assignment,
+  BackstageLinks,
   Checkpoint,
   ClaimResponse,
   DashboardStats,

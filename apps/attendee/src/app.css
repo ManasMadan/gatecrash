@@ -413,3 +413,24 @@
   font-size: var(--gc-small);
   color: var(--gc-text-dim);
 }
+
+/* The Backstage install card.
+ *
+ * Deliberately quieter than the ticket: a full-width green button here would compete
+ * with the QR, and the QR is the thing a gate needs. This is an offer, not a step. */
+.backstage__install {
+  display: block;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line, #2a2a35);
+  border-radius: 0.625rem;
+  color: inherit;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.backstage__install:hover,
+.backstage__install:focus-visible {
+  border-color: #4ade80;
+}

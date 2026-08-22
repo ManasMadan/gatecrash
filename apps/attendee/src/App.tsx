@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { ApiError, Client } from 'gatecrash-client'
-import type { Announcement, Destination, NearbyAmenity, TicketView } from 'gatecrash-client'
+import type {
+  Announcement,
+  BackstageLinks,
+  Destination,
+  NearbyAmenity,
+  TicketView,
+} from 'gatecrash-client'
 import { VenueMap } from 'gatecrash-ui'
 
 import {
@@ -149,6 +155,7 @@ function Wallet({
   const [nearby, setNearby] = useState<NearbyAmenity[] | null>(null)
   const [amenityKind, setAmenityKind] = useState<string | null>(null)
   const [stepFree, setStepFree] = useState(false)
+  const [backstage, setBackstage] = useState<BackstageLinks | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -222,6 +229,18 @@ function Wallet({
       .catch(() => {
         // The cached plan is what the map draws. A venue plan does not change during
         // an event, so a failure here is invisible after the first load.
+      })
+  }, [client])
+
+  useEffect(() => {
+    client
+      .meta()
+      // Only the install links. Everything else in /v1/meta is either already on the
+      // ticket or is the box talking about itself.
+      .then((meta) => setBackstage(meta.backstage ?? null))
+      .catch(() => {
+        // Offline. The app is not offered rather than offered and broken.
+        setBackstage(null)
       })
   }, [client])
 
@@ -315,6 +334,8 @@ function Wallet({
         ))}
 
       <Ticket cached={cached} />
+
+      <Backstage links={backstage} />
 
       {stale ? (
         <div className="offline-note">
@@ -513,6 +534,50 @@ function Wallet({
       ) : null}
 
       {view.support ? <p className="muted">Something wrong? {view.support}</p> : null}
+    </div>
+  )
+}
+
+/**
+ * The optional mesh chat app, offered below the ticket.
+ *
+ * Below, and not above: the ticket is why somebody opened this, and an install prompt
+ * above the QR is an install prompt somebody scrolls past at a gate. Rendered as nothing
+ * at all unless the organizer signed links into the manifest, so an event that does not
+ * use Backstage never mentions it.
+ *
+ * Only the link for the phone being held is shown. Offering an APK to an iPhone is how a
+ * page teaches people to ignore it.
+ */
+function Backstage({ links }: { links: BackstageLinks | null }) {
+  if (!links) return null
+
+  // Platform sniffing, which is usually the wrong answer and is the right one here: the
+  // question is not what the browser can do, it is which of two stores this person can
+  // install from, and nothing but the user agent knows that.
+  const agent = navigator.userAgent
+  const isIOS =
+    /iPad|iPhone|iPod/.test(agent) || (agent.includes('Mac') && 'ontouchend' in document)
+  const href = isIOS ? links.ios : links.android
+  if (!href) return null
+
+  return (
+    <div className="card backstage">
+      <h2>Talk to people here</h2>
+      <p className="muted">
+        {links.note ??
+          'Backstage passes messages phone to phone over Bluetooth, so it keeps working when the signal does not. Optional — your ticket works without it.'}
+      </p>
+      <a
+        className="backstage__install"
+        href={href}
+        // noreferrer as well as noopener: the destination is a store link, and there is
+        // no reason to tell it which ticket page somebody came from.
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Get Backstage for {isIOS ? 'iPhone' : 'Android'}
+      </a>
     </div>
   )
 }

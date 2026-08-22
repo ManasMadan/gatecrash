@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ManasMadan/gatecrash/internal/manifest"
 	"github.com/ManasMadan/gatecrash/internal/store"
 	"github.com/ManasMadan/gatecrash/internal/ticket"
 	"github.com/ManasMadan/gatecrash/internal/venue"
@@ -67,6 +68,11 @@ type Meta struct {
 
 	// Rotating says whether this event issues rotating codes.
 	Rotating bool `json:"rotating"`
+
+	// Backstage is where the optional mesh chat app can be had, when the organizer
+	// signed links into the manifest. Omitted entirely when they did not, so the
+	// wallet shows nothing rather than a dead button.
+	Backstage *manifest.BackstageLinks `json:"backstage,omitempty"`
 }
 
 // meta serves the public box description.
@@ -94,6 +100,9 @@ func (a *API) meta(w http.ResponseWriter, r *http.Request) {
 		Now:       now,
 		Window:    int64(ticket.WindowAt(now)),
 		Rotating:  !a.deps.Master.IsZero(),
+	}
+	if links := a.deps.Event.Backstage; links != (manifest.BackstageLinks{}) {
+		out.Backstage = &links
 	}
 	if a.deps.CA != nil {
 		out.CAFingerprint = a.deps.CA.Fingerprint()

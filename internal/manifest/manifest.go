@@ -65,6 +65,35 @@ type Event struct {
 	// number, a tent, a WhatsApp. Optional and frequently the most useful field
 	// in the file.
 	Support string `json:"support,omitempty"`
+
+	// Backstage is where the optional mesh chat app can be downloaded.
+	//
+	// In the signed manifest rather than in box-local config, because it is a link
+	// the box invites attendees to install software from. A field an operator could
+	// edit on the night is a field somebody with shell access could point at their
+	// own APK, and the people following it are standing in a queue trusting the
+	// event. Signed by the organizer, it cannot be changed without the organizer
+	// key.
+	//
+	// Empty means the app is simply not offered, which is the correct default: it is
+	// not required for a ticket to work.
+	Backstage BackstageLinks `json:"backstage,omitzero"`
+}
+
+// BackstageLinks points at the optional mesh chat apps.
+//
+// Nothing about a ticket depends on these. Backstage is for talking to people when the
+// phone signal has gone, and an attendee who never installs it still gets in.
+type BackstageLinks struct {
+	// Android is where the APK or Play listing lives.
+	Android string `json:"android,omitempty"`
+
+	// IOS is a TestFlight or App Store link.
+	IOS string `json:"ios,omitempty"`
+
+	// Note is one line shown next to the links, for an organizer who wants to say
+	// what the app is for in their own words.
+	Note string `json:"note,omitempty"`
 }
 
 // Body is the signed content of a manifest.
@@ -427,15 +456,15 @@ func Unmarshal(raw []byte) (Envelope, error) {
 		Fingerprint string `json:"fingerprint"`
 	}
 	if err := json.Unmarshal(raw, &wire); err != nil {
-		return Envelope{}, fmt.Errorf("%w: %v", ErrBadFormat, err)
+		return Envelope{}, fmt.Errorf("%w: %w", ErrBadFormat, err)
 	}
 	body, err := base64.StdEncoding.DecodeString(wire.Body)
 	if err != nil {
-		return Envelope{}, fmt.Errorf("%w: body is not base64: %v", ErrBadFormat, err)
+		return Envelope{}, fmt.Errorf("%w: body is not base64: %w", ErrBadFormat, err)
 	}
 	signature, err := base64.StdEncoding.DecodeString(wire.Signature)
 	if err != nil {
-		return Envelope{}, fmt.Errorf("%w: signature is not base64: %v", ErrBadFormat, err)
+		return Envelope{}, fmt.Errorf("%w: signature is not base64: %w", ErrBadFormat, err)
 	}
 	return Envelope{Format: wire.Format, Body: body, Signature: signature, Fingerprint: wire.Fingerprint}, nil
 }
