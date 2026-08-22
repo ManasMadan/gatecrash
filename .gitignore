@@ -56,3 +56,10 @@ apps/backstage-ios/.build/
 /gatecrash-keys
 /gatecrash-sim
 /gatecrash-demo
+
+# Android build outputs. local.properties holds a machine-specific SDK path and must
+# never be committed: it is the file that makes a checkout build on one laptop only.
+apps/backstage-android/.gradle/
+apps/backstage-android/build/
+apps/backstage-android/app/build/
+apps/backstage-android/local.properties

@@ -1,0 +1,10 @@
+<resources>
+    <!-- Compose draws everything; this exists so the window has a dark background
+         before the first frame, rather than flashing white at somebody standing in a
+         dark venue. -->
+    <style name="Theme.Backstage" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0B0B0F</item>
+        <item name="android:navigationBarColor">#0B0B0F</item>
+        <item name="android:windowBackground">#0B0B0F</item>
+    </style>
+</resources>

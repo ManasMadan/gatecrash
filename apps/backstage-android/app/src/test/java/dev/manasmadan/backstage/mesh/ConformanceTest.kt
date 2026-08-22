@@ -399,6 +399,51 @@ private fun densityForgetsAndWipeClears() {
     )
 }
 
+/**
+ * The frames the UI actually sends.
+ *
+ * Here because the bug this catches is invisible to a compiler and fatal at runtime: the
+ * first version built its message id as 12 bytes, and Frame's precondition rejects
+ * anything but 8. It compiled, installed, and would have thrown the moment somebody
+ * pressed Send. A wire constant is exactly the thing to assert rather than remember.
+ */
+private fun theUiBuildsSendableFrames() {
+    println("\nthe frames the UI sends are on-format")
+
+    val id = ByteArray(ID_SIZE) { (it + 1).toByte() }
+
+    val chat = chatFrame("north gate is backing up", urgent = false, id = id)
+    check("a chat message is a channel frame", chat.kind == Kind.CHANNEL)
+    check("and is not priority", !chat.isPriority)
+    check("and encodes", chat.encode().size == HEADER_SIZE + "north gate is backing up".length)
+
+    val sos = chatFrame("SOS", urgent = true, id = id)
+    check("an SOS is still a channel frame", sos.kind == Kind.CHANNEL)
+    check("but carries the priority flag", sos.isPriority)
+
+    // The priority flag is what makes an SOS cross a saturated field: an ordinary frame
+    // relays with probability k/n, a priority one relays unconditionally.
+    val crowd = Router(now = { 0L }, random = { 0.99 })
+    repeat(300) { crowd.observe("peer-$it") }
+    check(
+        "an SOS relays in a crowd where chatter does not",
+        crowd.handle(sos, "peer-0").relay && !crowd.handle(chat, "peer-1").relay,
+    )
+
+    // Truncated, not rejected, and still a legal frame.
+    val long = chatFrame("x".repeat(MAX_BODY + 40), urgent = false, id = id)
+    check("an over-long body is truncated to the maximum", long.body.size == MAX_BODY)
+    check("and the frame still encodes", long.encode().size == MAX_FRAME)
+
+    var threw = false
+    try {
+        chatFrame("hi", urgent = false, id = ByteArray(12))
+    } catch (_: IllegalArgumentException) {
+        threw = true
+    }
+    check("a wrong-sized id is refused rather than silently reshaped", threw)
+}
+
 fun main() {
     println("Backstage protocol conformance — Kotlin against the Go reference")
 
@@ -414,6 +459,7 @@ fun main() {
     seenIdsExpire()
     theRouterMakesTheRightDecisions()
     densityForgetsAndWipeClears()
+    theUiBuildsSendableFrames()
 
     println()
     if (failures > 0) {

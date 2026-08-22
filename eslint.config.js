@@ -11,10 +11,16 @@ export default tseslint.config(
       '**/node_modules/**',
       'docs/.vitepress/cache/**',
       '**/*.d.ts',
-      // Native app trees. Kotlin and Swift are linted by their own toolchains
-      // (ktlint, swift-format) in the mobile CI job.
-      'apps/android/**',
-      'apps/ios/**',
+      // Native app trees. Kotlin and Swift are checked by their own toolchains, and
+      // the Gradle and SwiftPM build directories under them contain generated
+      // JavaScript — Gradle's HTML test report ships its own report.js — which is
+      // neither ours nor lintable.
+      //
+      // These patterns previously read apps/android and apps/ios, which are not the
+      // directory names and so matched nothing at all. It went unnoticed until the
+      // Android build produced its first report.
+      'apps/backstage-android/**',
+      'apps/backstage-ios/**',
     ],
   },
   eslint.configs.recommended,

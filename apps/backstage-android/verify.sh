@@ -30,6 +30,7 @@ echo "==> compiling the protocol port"
 kotlinc \
   app/src/main/java/dev/manasmadan/backstage/mesh/Frame.kt \
   app/src/main/java/dev/manasmadan/backstage/mesh/Router.kt \
+  app/src/main/java/dev/manasmadan/backstage/mesh/Outgoing.kt \
   app/src/test/java/dev/manasmadan/backstage/mesh/ConformanceTest.kt \
   -include-runtime -d "$OUT" \
   -Werror

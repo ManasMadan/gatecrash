@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nothing is backed up. Identities are ephemeral by design: a key that survives to
+     the next festival is a handle that links somebody's two nights out. -->
+<full-backup-content>
+    <exclude domain="root" />
+    <exclude domain="database" />
+    <exclude domain="sharedpref" />
+    <exclude domain="file" />
+</full-backup-content>
