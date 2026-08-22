@@ -11,7 +11,7 @@ import {
   windowAt,
 } from '@/qr'
 
-describe('@gatecrash/protocol base32', () => {
+describe('gatecrash-client base32', () => {
   it('round trips', () => {
     for (const length of [1, 5, 10, 16, 64]) {
       const bytes = new Uint8Array(length)
@@ -61,7 +61,7 @@ describe('@gatecrash/protocol base32', () => {
   })
 })
 
-describe('@gatecrash/protocol qr', () => {
+describe('gatecrash-client qr', () => {
   const ticketId = 'GTNA4OA55FXIBGKBLOVYM36YO4'
 
   it('parses a printed ticket', () => {

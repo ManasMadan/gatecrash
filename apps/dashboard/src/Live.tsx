@@ -1,6 +1,6 @@
-import { severityOf } from '@gatecrash/protocol'
-import type { DashboardStats, GateStat, VenuePlan, ZoneStat } from '@gatecrash/protocol'
-import { VenueMap } from '@gatecrash/ui'
+import { severityOf } from 'gatecrash-client'
+import type { DashboardStats, GateStat, VenuePlan, ZoneStat } from 'gatecrash-client'
+import { VenueMap } from 'gatecrash-ui'
 
 /**
  * The live picture.

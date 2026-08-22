@@ -1,5 +1,5 @@
 {
-  "name": "@gatecrash/protocol",
+  "name": "gatecrash-client",
   "version": "0.1.0",
   "description": "Wire types, QR codecs and the box's API client. Shared by the scanner, the attendee wallet and the dashboard.",
   "license": "MIT",

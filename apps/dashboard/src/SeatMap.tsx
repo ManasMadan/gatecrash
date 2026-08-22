@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { DashboardStats, VenuePlan } from '@gatecrash/protocol'
-import { VenueMap } from '@gatecrash/ui'
+import type { DashboardStats, VenuePlan } from 'gatecrash-client'
+import { VenueMap } from 'gatecrash-ui'
 
 /**
  * The seat map, with fill per section.

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import type { Client, DashboardStats, VenuePlan } from '@gatecrash/protocol'
+import type { Client, DashboardStats, VenuePlan } from 'gatecrash-client'
 
 /**
  * Enrollment and the scanner roster.

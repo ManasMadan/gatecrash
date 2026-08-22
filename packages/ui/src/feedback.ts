@@ -1,4 +1,4 @@
-import type { Severity } from '@gatecrash/protocol'
+import type { Severity } from 'gatecrash-client'
 
 /**
  * Sound and haptics for the gate.

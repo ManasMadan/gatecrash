@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { VenuePlan } from '@gatecrash/protocol'
+import type { VenuePlan } from 'gatecrash-client'
 
 import { VenueMap } from '@/map'
 

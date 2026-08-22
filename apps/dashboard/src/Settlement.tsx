@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Client, DashboardStats } from '@gatecrash/protocol'
+import type { Client, DashboardStats } from 'gatecrash-client'
 
 /**
  * Announcements and settlement.

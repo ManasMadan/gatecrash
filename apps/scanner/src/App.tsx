@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Client } from '@gatecrash/protocol'
-import { unlockAudio } from '@gatecrash/ui'
+import { Client } from 'gatecrash-client'
+import { unlockAudio } from 'gatecrash-ui'
 
 import { Enroll } from '@/Enroll'
 import { Gate } from '@/Gate'

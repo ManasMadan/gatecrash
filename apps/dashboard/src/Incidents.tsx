@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Client, DashboardStats, Incident } from '@gatecrash/protocol'
+import type { Client, DashboardStats, Incident } from 'gatecrash-client'
 
 import { since, useSecond } from '@/App'
 

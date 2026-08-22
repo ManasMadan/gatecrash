@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import type { ScanResult, Severity } from '@gatecrash/protocol'
-import { severityOf, verdictCopy } from '@gatecrash/protocol'
+import type { ScanResult, Severity } from 'gatecrash-client'
+import { severityOf, verdictCopy } from 'gatecrash-client'
 
 import { playVerdict, type FeedbackOptions } from '@/feedback'
 

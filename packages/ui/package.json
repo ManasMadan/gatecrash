@@ -1,5 +1,5 @@
 {
-  "name": "@gatecrash/ui",
+  "name": "gatecrash-ui",
   "version": "0.1.0",
   "description": "Design tokens, the gate verdict screen, and the venue map renderer. Shared by the scanner, the attendee wallet and the dashboard.",
   "license": "MIT",
@@ -37,7 +37,7 @@
     "react": "^19.0.0"
   },
   "dependencies": {
-    "@gatecrash/protocol": "workspace:*"
+    "gatecrash-client": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

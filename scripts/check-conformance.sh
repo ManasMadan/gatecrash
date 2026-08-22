@@ -51,7 +51,7 @@ say "the TypeScript side reads them"
 # Run only the tests that consume a fixture. A full pnpm test run happens elsewhere in
 # CI; the point here is to make the failure legible when it is specifically a
 # cross-language disagreement rather than a broken app.
-if ! pnpm --filter @gatecrash/protocol exec vitest run test/bloom.test.ts test/qr.test.ts; then
+if ! pnpm --filter gatecrash-client exec vitest run test/bloom.test.ts test/qr.test.ts; then
   bad "the TypeScript implementation disagrees with the Go one"
 else
   good "the TypeScript codecs agree with the fixtures"

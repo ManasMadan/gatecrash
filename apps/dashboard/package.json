@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gatecrash/protocol": "workspace:*",
-    "@gatecrash/ui": "workspace:*",
+    "gatecrash-client": "workspace:*",
+    "gatecrash-ui": "workspace:*",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError } from '@gatecrash/protocol'
+import { ApiError } from 'gatecrash-client'
 
 import { anonymousClient } from '@/App'
 import { createDecoder, openCamera, type Decoder } from '@/decode'

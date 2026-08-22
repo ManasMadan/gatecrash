@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { severityOf, verdictCopy } from '@/verdict'
 
-describe('@gatecrash/protocol verdict copy', () => {
+describe('gatecrash-client verdict copy', () => {
   // The redirect group is the highest-value UX decision in the product: a
   // misrouted paying customer, a stale in-app code and somebody who arrived early
   // are all situations where nothing is wrong and nobody is in trouble. Showing
