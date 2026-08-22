@@ -37,10 +37,26 @@ type Config struct {
 	// in a packed pit roughly K phones per neighbourhood do. Too low and messages
 	// die in the middle of a field; too high and the band saturates.
 	//
-	// Three is the default, from the crowd simulator: it holds above 95% delivery
-	// from fifty to five thousand nodes while keeping airtime roughly flat as
-	// density rises. Two drops off badly past a thousand nodes; five costs about
-	// 60% more airtime for under a point of delivery.
+	// Three is the default, and these are the numbers it came from. The crowd
+	// simulator, seed 7, 20m range, 120 seconds, ten messages:
+	//
+	//	nodes  field    K=2     K=3     K=5      tx/msg at K=3
+	//	   50  60x40   81.8%   86.1%   99.4%     15
+	//	  500  60x40   96.4%   98.8%   99.9%     45
+	//	 2000  60x40      —    99.9%      —     118
+	//	 5000 120x80   99.1%   99.4%  100.0%    338
+	//
+	// So from five hundred nodes up, three clears the 95% target with airtime that
+	// grows far slower than the crowd — ten times the phones for seven times the
+	// transmissions per message. Five buys the last half a point for 40% more
+	// airtime (338 to 475 transmissions per message at 5000), which is the wrong
+	// trade when the cost is everybody's battery.
+	//
+	// The fifty-node row is the interesting one, and it is not a storm-control
+	// result at all: a sparse field is simply not connected, so delivery is bounded
+	// by whether a path exists rather than by how many nodes relay. That is what the
+	// store-and-forward buffer is for — carrying a message in a pocket until its
+	// carrier walks into the next group — and it is worth 6 points there.
 	K float64
 
 	// TTL is the hop limit put on frames this node originates.
@@ -299,6 +315,25 @@ func (r *Router) Originate(frame Frame) Frame {
 	r.seen.SeenID(frame.ID)
 	r.carry.add(frame, r.cfg.Now())
 	return frame
+}
+
+// ShouldOfferCarry reports whether this node should push its store-and-forward
+// buffer at a peer it has just met.
+//
+// Only in a sparse neighbourhood, and that restriction is load-bearing rather than
+// conservative. Carrying exists to cross a gap between two clusters of people who
+// never hear each other; in a dense crowd flooding already reaches everybody and the
+// buffer adds nothing. The simulator found the cost of ignoring that: with five
+// hundred phones in a hall, every node meets hundreds of peers and offering four
+// frames to each one produced hundreds of thousands of extra transmissions, which is
+// the broadcast storm the density rule exists to prevent, reintroduced through a
+// side door.
+//
+// The threshold is the same one the relay rule uses — a neighbourhood smaller than
+// K, where the relay probability is already 1 — so there is one definition of
+// "sparse" in this package rather than two that can drift apart.
+func (r *Router) ShouldOfferCarry() bool {
+	return float64(r.neighbors.count(r.cfg.Now())) < r.cfg.K
 }
 
 // Carried returns the frames worth offering to a peer that has just come into
