@@ -193,8 +193,12 @@
   color: var(--gc-text-dim);
 }
 
+/* A column, so the name and its hint stack. They are spans, and as inline spans
+ * they ran together into "Portal Ainto Arena". */
 .step__what {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
 }
 
