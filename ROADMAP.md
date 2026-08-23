@@ -22,6 +22,16 @@ that is a model. A smart plug, a real Pi, a real SD card and a hundred real powe
 under write load is a measurement — and the difference between the two is exactly where
 SD cards lie.
 
+**A read-only dashboard token.** Today there is one admin token and it can do everything:
+watch the numbers, revoke a device, export the attendance report. A screen in the foyer showing
+occupancy therefore needs a credential that could also cancel every scanner, which is the wrong
+shape for the job — the `foyer-display` example says so and works around it with a reverse
+proxy.
+
+The fix is small: a second token, or a scope on the existing one, that reaches
+`GET /v1/admin/stats` and nothing else. It is not done because every screen so far has been on
+a machine in the same locked room as the box.
+
 ## Considered, and not now
 
 **Multiple boxes with a shared view.** One box handles thirty times the load of a large

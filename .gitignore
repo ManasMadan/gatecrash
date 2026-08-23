@@ -39,3 +39,10 @@ apps/ios/**/xcuserdata/
 # Backstage port build output
 apps/backstage-android/.build/
 apps/backstage-ios/.build/
+
+# Stray build outputs at the repo root. `go build ./cmd/...` without -o drops binaries here,
+# and an 18MB blob is an easy thing to commit by accident.
+/gatecrash
+/gatecrash-keys
+/gatecrash-sim
+/gatecrash-demo
