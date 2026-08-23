@@ -35,6 +35,7 @@ import (
 	"github.com/ManasMadan/gatecrash/internal/ticket"
 	"github.com/ManasMadan/gatecrash/internal/venue"
 	"github.com/ManasMadan/gatecrash/internal/version"
+	"github.com/ManasMadan/gatecrash/internal/watchdog"
 	"github.com/ManasMadan/gatecrash/internal/webassets"
 )
 
@@ -113,6 +114,7 @@ type box struct {
 	hub      *ssehub.Hub
 	ca       *pki.Authority
 	api      *httpapi.API
+	notify   *watchdog.Notifier
 
 	addrs      []netip.Addr
 	adminToken string
@@ -304,6 +306,16 @@ func open(ctx context.Context, cfg config.Config, log *slog.Logger) (*box, error
 		Enabled: cfg.Mode == config.AP,
 		Logger:  log,
 	})
+
+	// systemd's notification socket, if there is one. Absent everywhere except a
+	// systemd unit, and a no-op there, so no caller has to check.
+	if b.notify, err = watchdog.New(); err != nil {
+		// Not fatal. A box that refuses to start because it could not reach a
+		// supervision socket is a box that will not open a gate over a monitoring
+		// detail.
+		log.Warn("could not reach the systemd notification socket", "error", err)
+		b.notify = &watchdog.Notifier{}
+	}
 
 	b.api, err = httpapi.New(httpapi.Deps{
 		Engine: b.engine, Store: opened, Venue: compiled, Stats: b.stats,
@@ -511,6 +523,90 @@ func (b *box) boxKey() (ticket.SigningKey, error) {
 	return key, nil
 }
 
+// idle reports whether a box with no recent scans is legitimately quiet.
+//
+// Before doors open, and after curfew, there is nothing to serve and the box is
+// perfectly healthy. Between those, silence from every gate at once is far more
+// likely to be this process than twelve scanners simultaneously going quiet — so
+// outside the session window the box is idle, and inside it a lack of scans is
+// allowed to look like a hang.
+func (b *box) idle() bool {
+	now := time.Now()
+	doors, curfew := b.event.Doors, b.event.Curfew
+	if doors.IsZero() || curfew.IsZero() {
+		// An event with no declared hours never claims to be busy, because there is
+		// no window to be inside of.
+		return true
+	}
+	return now.Before(doors) || now.After(curfew)
+}
+
+// markProgress tells the watchdog the box is still doing work.
+//
+// Measured from the committed scan count rather than from the request handler, and
+// that is the point: a handler that has been entered proves a goroutine was
+// scheduled, while a scan count that advanced proves a decision was made, written
+// and chained. If the store's writer deadlocks, requests keep arriving and the count
+// stops moving — which is exactly the failure a supervisor needs to see.
+func (b *box) markProgress(ctx context.Context) error {
+	interval := b.notify.Interval() / 3
+	if interval <= 0 {
+		<-ctx.Done()
+		return nil
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	previous := b.stats.Snapshot().Scans
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			if current := b.stats.Snapshot().Scans; current != previous {
+				previous = current
+				b.notify.Alive()
+			}
+		}
+	}
+}
+
+// reportStatus keeps the line shown by `systemctl status` current.
+//
+// Over SSH this is the only tool available when the thing that has broken is the
+// dashboard, so it carries the numbers somebody would otherwise open a browser for.
+func (b *box) reportStatus(ctx context.Context) error {
+	if !b.notify.Enabled() {
+		<-ctx.Done()
+		return nil
+	}
+
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			live := b.stats.Snapshot()
+			gates := 0
+			for _, gate := range live.Gates {
+				if gate.Admitted > 0 || gate.Denied > 0 {
+					gates++
+				}
+			}
+			if err := b.notify.Status(fmt.Sprintf(
+				"%d inside of %d · %d gates scanning · %d refused",
+				live.Inside, live.Issued, gates, live.Denied,
+			)); err != nil {
+				b.log.Debug("status notification failed", "error", err)
+			}
+		}
+	}
+}
+
 // run starts every service and blocks until the context is cancelled.
 func (b *box) run(ctx context.Context) error {
 	var wg sync.WaitGroup
@@ -544,12 +640,35 @@ func (b *box) run(ctx context.Context) error {
 		start("dhcp", b.serveDHCP)
 	}
 	start("sealer", b.sealPeriodically)
-	start("watchdog", b.watchGates)
+	start("gates", b.watchGates)
+
+	// The systemd heartbeat. Driven by the scan path rather than by a timer, so a box
+	// that is running but no longer answering scans stops pinging and gets restarted
+	// — see internal/watchdog. Started before Ready so that no deadline is missed
+	// during a slow first manifest load.
+	start("heartbeat", func(ctx context.Context) error {
+		return b.notify.Run(ctx, b.idle)
+	})
+	start("liveness", b.markProgress)
+	start("status", b.reportStatus)
 
 	b.announceReady()
 
+	// READY=1 goes out here and not at the top of main: with Type=notify, systemd
+	// holds dependent units until it arrives, so sending it earlier would mean
+	// "ready" described a process that could not yet answer a scan.
+	if err := b.notify.Ready(); err != nil {
+		b.log.Warn("could not notify systemd", "error", err)
+	}
+
 	<-ctx.Done()
 	b.log.Info("shutting down")
+
+	// Told deliberately, so that a planned stop and a crash are distinguishable in
+	// the journal afterwards. Somebody will be asking which one happened at 23:14.
+	if err := b.notify.Stopping(); err != nil {
+		b.log.Warn("could not notify systemd of shutdown", "error", err)
+	}
 	b.hub.Close()
 
 	// Flush the WAL into the database before the process exits, so a naive file
