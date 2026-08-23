@@ -14,6 +14,7 @@ import (
 
 	"github.com/ManasMadan/gatecrash/internal/audit"
 	"github.com/ManasMadan/gatecrash/internal/config"
+	"github.com/ManasMadan/gatecrash/internal/hlc"
 	"github.com/ManasMadan/gatecrash/internal/logx"
 	"github.com/ManasMadan/gatecrash/internal/manifest"
 	"github.com/ManasMadan/gatecrash/internal/pki"
@@ -194,6 +195,125 @@ func verify(args []string) error {
 		}
 	}
 	fmt.Printf("\nadmissions %d of %d recorded decisions\n", admits, len(rows))
+	return nil
+}
+
+// seal cuts a Merkle checkpoint over the whole log.
+//
+// The box does this on a timer while it runs. This is the one an operator runs at the
+// end of the night, because the number that gets published has to be the one that
+// covers every row — and "publish the root" is a step somebody performs deliberately
+// rather than a side effect of a ticker.
+func seal(args []string) error {
+	flags := flag.NewFlagSet("seal", flag.ContinueOnError)
+	configPath := flags.String("config", defaultConfigPath(), "path to the configuration file")
+	dbPath := flags.String("db", "", "seal this database file directly")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+
+	path := *dbPath
+	if path == "" {
+		cfg, err := config.Load(*configPath)
+		if err != nil {
+			return err
+		}
+		path = cfg.DatabasePath()
+	}
+
+	ctx := context.Background()
+	opened, err := store.Open(ctx, store.Options{Path: path, Synchronous: "FULL"})
+	if err != nil {
+		return err
+	}
+	defer opened.Close()
+
+	// The checkpoint is stamped with a clock reading taken now. Nothing decides anything
+	// on it — it is there so a sequence of checkpoints can be ordered — so a fresh clock
+	// rather than the box's own is fine, and this command runs when the box does not.
+	checkpoint, err := opened.Seal(ctx, hlc.NewClock(time.Now).Now())
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("sealed %d rows\n", checkpoint.Rows)
+	fmt.Printf("  root %s\n", checkpoint.Root)
+	fmt.Printf("  head %s\n", checkpoint.Head)
+	fmt.Println()
+	fmt.Println("publish that root. it is 32 bytes, and every attendance proof is checked")
+	fmt.Println("against it — including by somebody who does not trust this box.")
+	return nil
+}
+
+// attendance prints the proof that one ticket was admitted.
+//
+// The point of this command is that its output is checkable without it. A promoter who
+// disbelieves the turnout does not need the database, the log, or any cooperation from
+// the box: they need the published root and these few hundred bytes.
+func attendance(args []string) error {
+	flags := flag.NewFlagSet("attendance", flag.ContinueOnError)
+	configPath := flags.String("config", defaultConfigPath(), "path to the configuration file")
+	dbPath := flags.String("db", "", "read this database file directly")
+	asJSON := flags.Bool("json", false, "emit the proof as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 1 {
+		return errors.New("usage: gatecrash attendance <ticket-id>")
+	}
+
+	id, err := ticket.ParseID(flags.Arg(0))
+	if err != nil {
+		return fmt.Errorf("%q is not a ticket id: %w", flags.Arg(0), err)
+	}
+
+	path := *dbPath
+	if path == "" {
+		cfg, err := config.Load(*configPath)
+		if err != nil {
+			return err
+		}
+		path = cfg.DatabasePath()
+	}
+
+	ctx := context.Background()
+	opened, err := store.Open(ctx, store.Options{Path: path, Synchronous: "NORMAL"})
+	if err != nil {
+		return err
+	}
+	defer opened.Close()
+
+	proof, found, err := opened.Attendance(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !found {
+		// Not an error. "That ticket was never admitted" is a perfectly good answer to
+		// the question, and often the answer somebody is checking for.
+		fmt.Printf("%s: no admission recorded\n", id)
+		return nil
+	}
+
+	if *asJSON {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(proof)
+	}
+
+	if err := audit.VerifyAttendance(proof); err != nil {
+		return fmt.Errorf("the proof does not verify against its own root: %w", err)
+	}
+
+	fmt.Printf("%s\n", id)
+	fmt.Printf("  admitted at   %s\n", proof.Record.Checkpoint)
+	fmt.Printf("  by device     %s\n", proof.Record.Device)
+	fmt.Printf("  audit row     %d\n", proof.Record.Seq)
+	fmt.Printf("  proof         %d sibling hashes, %d bytes\n",
+		len(proof.Proof.Siblings), len(proof.Proof.Siblings)*32)
+	fmt.Printf("  against root  %s\n", proof.Checkpoint.Root)
+	fmt.Println()
+	fmt.Println("verified. that root is all a verifier needs — no log, no database,")
+	fmt.Println("and no trust in this box.")
 	return nil
 }
 

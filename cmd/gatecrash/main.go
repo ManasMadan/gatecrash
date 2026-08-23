@@ -53,6 +53,10 @@ func run() error {
 		return ingest(os.Args[2:])
 	case "verify":
 		return verify(os.Args[2:])
+	case "seal":
+		return seal(os.Args[2:])
+	case "attendance":
+		return attendance(os.Args[2:])
 	case "export":
 		return export(os.Args[2:])
 	case "doctor":
@@ -81,6 +85,8 @@ Usage:
   gatecrash [serve] [flags]      run the box
   gatecrash ingest <manifest>    load a signed manifest and exit
   gatecrash verify               replay the audit chain and report
+  gatecrash seal                 cut a Merkle checkpoint and print the root to publish
+  gatecrash attendance <id>      prove one admission against that root
   gatecrash export [file]        write the signed attendance report
   gatecrash doctor               check the box's own state
   gatecrash version              print the build
