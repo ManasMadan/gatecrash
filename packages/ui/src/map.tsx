@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
-import type { Amenity, Point, Route, SeatRef, VenuePlan } from '@gatecrash/protocol'
+import type { Amenity, Point, Route, SeatRef, VenuePlan } from 'gatecrash-client'
 
 /**
  * The venue map.

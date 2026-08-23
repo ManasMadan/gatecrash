@@ -1,8 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import '@gatecrash/ui/tokens.css'
-import '@gatecrash/ui/verdict.css'
+import 'gatecrash-ui/tokens.css'
+import 'gatecrash-ui/verdict.css'
 import '@/app.css'
 import { App } from '@/App'
 

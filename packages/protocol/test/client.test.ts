@@ -27,7 +27,7 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-describe('@gatecrash/protocol client', () => {
+describe('gatecrash-client client', () => {
   it('sends the bearer token and parses the response', async () => {
     const { fetch, calls } = stubFetch(() => json({ event: 'Sundown Sessions', api: '1' }))
     const client = new Client({ baseUrl: 'https://10.11.0.1:8443', token: 'device-token', fetch })

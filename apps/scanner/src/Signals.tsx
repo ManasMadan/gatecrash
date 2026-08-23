@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Client, Incident, IncidentKindOption } from '@gatecrash/protocol'
+import type { Client, Incident, IncidentKindOption } from 'gatecrash-client'
 
 import { newScanId } from '@/store'
 

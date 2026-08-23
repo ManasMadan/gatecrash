@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { ScanResult } from '@gatecrash/protocol'
+import type { ScanResult } from 'gatecrash-client'
 
 import { VerdictScreen, formatSeat } from '@/verdict'
 

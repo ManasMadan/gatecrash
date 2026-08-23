@@ -1,11 +1,11 @@
-import { BloomFilter, Client, parsePayload } from '@gatecrash/protocol'
+import { BloomFilter, Client, parsePayload } from 'gatecrash-client'
 import type {
   Assignment,
   IncidentKindOption,
   ManifestSync,
   ScanResult,
   VenuePlan,
-} from '@gatecrash/protocol'
+} from 'gatecrash-client'
 
 /**
  * The scanner's local state and its offline behaviour.

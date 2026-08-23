@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ApiError, type Incident, type ScanResult } from '@gatecrash/protocol'
-import { VerdictScreen, playAlarm, playQueued } from '@gatecrash/ui'
+import { ApiError, type Incident, type ScanResult } from 'gatecrash-client'
+import { VerdictScreen, playAlarm, playQueued } from 'gatecrash-ui'
 
 import { createDecoder, hasTorch, openCamera, setTorch, type Decoder } from '@/decode'
 import { Settings as SettingsSheet } from '@/Settings'

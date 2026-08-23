@@ -53,10 +53,10 @@ importers:
 
   apps/attendee:
     dependencies:
-      '@gatecrash/protocol':
+      gatecrash-client:
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@gatecrash/ui':
+      gatecrash-ui:
         specifier: workspace:*
         version: link:../../packages/ui
       qrcode:
@@ -93,10 +93,10 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@gatecrash/protocol':
+      gatecrash-client:
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@gatecrash/ui':
+      gatecrash-ui:
         specifier: workspace:*
         version: link:../../packages/ui
       qrcode:
@@ -133,10 +133,10 @@ importers:
 
   apps/scanner:
     dependencies:
-      '@gatecrash/protocol':
+      gatecrash-client:
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@gatecrash/ui':
+      gatecrash-ui:
         specifier: workspace:*
         version: link:../../packages/ui
       jsqr:
@@ -178,6 +178,24 @@ importers:
         specifier: ^1.6.0
         version: 1.6.4(@algolia/client-search@5.57.0)(@types/node@24.13.3)(postcss@8.5.26)(qrcode@1.5.4)(search-insights@2.17.3)(typescript@5.9.3)
 
+  examples/door-sales:
+    dependencies:
+      gatecrash-client:
+        specifier: workspace:*
+        version: link:../../packages/protocol
+
+  examples/foyer-display:
+    dependencies:
+      gatecrash-client:
+        specifier: workspace:*
+        version: link:../../packages/protocol
+
+  examples/turnstile:
+    dependencies:
+      gatecrash-client:
+        specifier: workspace:*
+        version: link:../../packages/protocol
+
   packages/protocol:
     devDependencies:
       tsup:
@@ -192,7 +210,7 @@ importers:
 
   packages/ui:
     dependencies:
-      '@gatecrash/protocol':
+      gatecrash-client:
         specifier: workspace:*
         version: link:../protocol
     devDependencies:

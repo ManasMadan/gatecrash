@@ -147,9 +147,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: build the protocol package first
-        # The apps' type-aware lint cannot resolve @gatecrash/protocol until its
+        # The apps' type-aware lint cannot resolve gatecrash-client until its
         # declarations exist, so the order here is not incidental.
-        run: pnpm --filter @gatecrash/protocol build
+        run: pnpm --filter gatecrash-client build
 
       - run: pnpm -r typecheck
       - run: pnpm -r lint

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { ApiError, Client } from '@gatecrash/protocol'
-import type { Announcement, Destination, NearbyAmenity, TicketView } from '@gatecrash/protocol'
-import { VenueMap } from '@gatecrash/ui'
+import { ApiError, Client } from 'gatecrash-client'
+import type { Announcement, Destination, NearbyAmenity, TicketView } from 'gatecrash-client'
+import { VenueMap } from 'gatecrash-ui'
 
 import {
   currentPayload,

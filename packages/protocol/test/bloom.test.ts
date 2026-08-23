@@ -18,7 +18,7 @@ const fixture: Fixture = JSON.parse(
   readFileSync(fileURLToPath(new URL('./testdata/bloom.json', import.meta.url)), 'utf8'),
 ) as Fixture
 
-describe('@gatecrash/protocol bloom', () => {
+describe('gatecrash-client bloom', () => {
   // This is the most important test in the package. The Bloom filter is the one
   // data structure in Gatecrash implemented twice — once in Go on the box, once
   // here on the scanner. If the two disagree by a single bit, the scanner rejects

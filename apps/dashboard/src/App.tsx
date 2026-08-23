@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ApiError, Client, severityOf } from '@gatecrash/protocol'
-import type { DashboardStats, Incident, VenuePlan } from '@gatecrash/protocol'
+import { ApiError, Client, severityOf } from 'gatecrash-client'
+import type { DashboardStats, Incident, VenuePlan } from 'gatecrash-client'
 
 import { Enrollment } from '@/Enrollment'
 import { Incidents } from '@/Incidents'

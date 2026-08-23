@@ -1,5 +1,5 @@
-import { generateRotating, parsePayload } from '@gatecrash/protocol'
-import type { TicketView, VenuePlan } from '@gatecrash/protocol'
+import { generateRotating, parsePayload } from 'gatecrash-client'
+import type { TicketView, VenuePlan } from 'gatecrash-client'
 
 /**
  * The wallet's local state.
