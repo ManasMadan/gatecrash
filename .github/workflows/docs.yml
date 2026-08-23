@@ -1,0 +1,60 @@
+name: docs
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and do not cancel one in flight: a cancelled Pages deploy can
+# leave the site serving a half-published build.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # VitePress reads git history for last-updated timestamps, and a shallow
+          # clone makes every page claim it was written today.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @gatecrash/docs build
+
+      - name: check every internal link resolves
+        # A documentation site whose links rot is a documentation site nobody trusts,
+        # and the ones that rot are always the ones pointing at a renamed page.
+        run: pnpm --filter @gatecrash/docs exec vitepress build --outDir .vitepress/dist
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

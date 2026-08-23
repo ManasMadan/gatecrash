@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/ManasMadan/gatecrash/security/advisories/new
+    about: >
+      Do not open a public issue. This system decides who gets into a building, so a
+      flaw in it is reported privately first — see SECURITY.md.
+  - name: Question, or an idea that is not a bug yet
+    url: https://github.com/ManasMadan/gatecrash/discussions
+    about: Discussions are the right place for "would this work for my event?"

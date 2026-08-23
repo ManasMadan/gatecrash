@@ -1,0 +1,64 @@
+name: Something went wrong at a gate
+description: A ticket was refused that should have been admitted, or admitted that should not have been.
+labels: ['gate', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most important kind of report this project can get, because it is
+        the only one where somebody was standing in front of a door when it happened.
+
+        If people are still arriving, deal with that first. The dashboard's Setup tab
+        can revoke a device, and a gate can be switched to a manual list. Come back to
+        this afterwards.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened at the door
+      description: What the guard saw, what the screen said, and what should have happened.
+      placeholder: |
+        A VIP wristband was refused at the pit gate with PREREQUISITE_MISSING. She had
+        come in through the north gate twenty minutes earlier.
+    validations:
+      required: true
+  - type: input
+    id: verdict
+    attributes:
+      label: The verdict on screen
+      description: The word in the middle of the screen, if anybody remembers it.
+      placeholder: PREREQUISITE_MISSING
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Consistency mode
+      description: On the dashboard, top left. It is in the manifest, so it does not change mid-event.
+      options: [STRICT, DEGRADED, 'I do not know']
+    validations:
+      required: true
+  - type: dropdown
+    id: network
+    attributes:
+      label: Was the scanner online at the time?
+      options:
+        - Online
+        - Offline, queueing
+        - It had just reconnected
+        - I do not know
+    validations:
+      required: true
+  - type: textarea
+    id: audit
+    attributes:
+      label: The audit rows for that ticket
+      description: >
+        From the dashboard's Setup tab, or `gatecrash tools attendance <ticket-id>`. This
+        is usually enough to say exactly what the box decided and why, and it contains
+        no personal information — the box only ever knows a ticket id.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: '`gatecrash version`, or the bottom of the dashboard.'
+    validations:
+      required: true

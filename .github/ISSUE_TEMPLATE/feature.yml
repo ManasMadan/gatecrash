@@ -1,0 +1,31 @@
+name: Feature or change
+description: Something this should do and does not.
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What happens today, at an actual event, that this would fix. Not the feature —
+        the problem. Almost everything good in this project came from somebody
+        describing a bad twenty minutes at a door.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you had in mind
+      description: Optional. A rough shape is fine.
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Does it hold under these?
+      description: >
+        Every one of these is a promise the project has already made, and a feature
+        that breaks one is a much bigger conversation than one that does not.
+      options:
+        - label: It works with no internet, during the event
+        - label: It works when a scanner cannot reach the box
+        - label: It does not require the box to store personal data
+        - label: It runs on a Raspberry Pi

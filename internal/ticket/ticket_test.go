@@ -664,3 +664,22 @@ func BenchmarkVerifyGC1(b *testing.B) {
 		}
 	}
 }
+
+// TestGC1LengthMatchesTheClients pins a number that exists in three places.
+//
+// Go computes it from its parts, which is the right way round — change the prefix or
+// the encoding and it follows. TypeScript hardcodes it as GC1_LENGTH because a
+// scanner checks the length before it parses anything, and a phone has no business
+// recomputing a format. Kotlin and Swift will do the same.
+//
+// That makes this the one place the three can be tied together, and 134 is also a QR
+// version 7 alphanumeric payload — one character more and every printed ticket needs
+// a denser code, which is a real change to how well it scans off paper in bad light.
+func TestGC1LengthMatchesTheClients(t *testing.T) {
+	const clientsExpect = 134 // packages/protocol/src/qr.ts, GC1_LENGTH
+
+	if GC1Len != clientsExpect {
+		t.Errorf("GC1Len is %d and every client expects %d — update GC1_LENGTH in "+
+			"packages/protocol/src/qr.ts and check the QR version still fits", GC1Len, clientsExpect)
+	}
+}

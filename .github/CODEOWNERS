@@ -1,0 +1,13 @@
+# Everything, for now. This is a one-person project and pretending otherwise in a
+# CODEOWNERS file would just mean review requests going nowhere.
+*   @ManasMadan
+
+# The parts where a mistake is not recoverable by a redeploy: a flaw in the crypto or
+# in the exactly-once path is a flaw in what somebody was told at a door, and a change
+# to the audit chain's format invalidates every attendance report already issued.
+/internal/ticket/      @ManasMadan
+/internal/engine/      @ManasMadan
+/internal/audit/       @ManasMadan
+/internal/merkle/      @ManasMadan
+/internal/noise/       @ManasMadan
+/internal/meshcrypto/  @ManasMadan

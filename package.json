@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.15.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "pnpm -r build && pnpm go:build",
     "test": "pnpm -r test && pnpm go:test",
@@ -15,17 +17,24 @@
     "go:test": "go test ./...",
     "go:test:race": "go test -race ./...",
     "go:lint": "go vet ./... && golangci-lint run",
-    "sim": "go run ./cmd/gatecrash-sim event-day --seeds 256",
-    "sim:mesh": "go run ./cmd/gatecrash-sim mesh --nodes 500 --sweep-k",
+    "sim": "go run ./cmd/gatecrash-sim event -seeds 256",
+    "sim:mesh": "go run ./cmd/gatecrash-sim crowd -sweep",
     "bench": "pnpm --filter @gatecrash/bench bench",
     "demo": "pnpm --filter @gatecrash/demo demo",
     "changeset": "changeset",
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,mjs,cjs}": ["eslint --fix", "prettier --write"],
-    "*.{json,md,yaml,yml}": ["prettier --write"],
-    "*.go": ["gofmt -w"]
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ],
+    "*.go": [
+      "gofmt -w"
+    ]
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.0",

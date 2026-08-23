@@ -1,0 +1,49 @@
+name: Bug
+description: Something is wrong, and nobody was standing at a gate at the time.
+labels: ['needs triage']
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: >
+        If it is in the redemption engine, the simulator can probably reproduce it —
+        `gatecrash-sim event -seed N -seeds 1` replays one event-day exactly. A seed
+        that fails is the most useful bug report this project can receive.
+      render: shell
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      multiple: true
+      options:
+        - The box (gatecrash serve)
+        - The organizer CLI (gatecrash-keys)
+        - The scanner app
+        - The attendee wallet
+        - The dashboard
+        - The mesh (Backstage)
+        - The simulator
+        - Deployment or the Pi image
+        - Docs
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: '`gatecrash version`'
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: Raspberry Pi 5, Raspberry Pi OS Lite 64-bit / macOS 15 arm64

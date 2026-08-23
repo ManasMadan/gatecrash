@@ -1,0 +1,215 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  # Weekly, unprompted. The fuzzers and the long simulation sweeps find things that
+  # a per-commit run does not have time for, and a repository that only ever runs CI
+  # when somebody pushes stops learning anything the day the pushes stop.
+  schedule:
+    - cron: '17 4 * * 1'
+
+# One run per branch. A queue of superseded runs on a project this size is just a
+# slower path to the same answer.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.24'
+  NODE_VERSION: '22'
+
+jobs:
+  go:
+    name: go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: gofmt
+        # Not `gofmt -l .` piped to test -z: that reports the files and exits 0, so a
+        # formatting failure would pass CI silently.
+        run: ./scripts/check-gofmt.sh
+
+      - name: go vet
+        run: go vet ./...
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: go test -race
+        # Separately from the plain run, because the race detector changes timing
+        # enough that a test can pass under one and fail under the other — and the box
+        # serves twelve gates from one process, so the concurrent paths are the ones
+        # that matter.
+        run: go test -race ./...
+
+      - name: the binary is static and cross-compiles for the box
+        # The single claim the whole deployment story rests on: one file, no shared
+        # libraries, runs on a Raspberry Pi. Checked here rather than discovered on a
+        # Pi in a field.
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" \
+            -o /tmp/gatecrash-arm64 ./cmd/gatecrash
+          file /tmp/gatecrash-arm64
+          file /tmp/gatecrash-arm64 | grep -q 'statically linked\|static-pie\|ARM aarch64'
+          ls -l /tmp/gatecrash-arm64
+
+  simulate:
+    name: simulate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: seeded event-days
+        # The number that matters. Every run injects partitions, retries, reorders,
+        # clock skew and power cuts, then asserts no double admission in STRICT, no
+        # undetected double use in DEGRADED, and an unbroken audit chain.
+        #
+        # 64 on a pull request, and the scheduled run does far more — see below.
+        run: go run ./cmd/gatecrash-sim event -seeds 64 -quiet
+
+      - name: the mesh across density
+        run: go run ./cmd/gatecrash-sim crowd -nodes 500 -duration 60s
+
+  soak:
+    name: soak
+    # Only on the weekly schedule. Thousands of event-days is the artefact that makes
+    # the correctness claim, and it takes long enough that running it on every push
+    # would make the pull request feedback loop useless.
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: ten thousand event-days
+        run: go run ./cmd/gatecrash-sim event -seeds 5000 -quiet
+
+      - name: the full mesh sweep
+        run: go run ./cmd/gatecrash-sim crowd -sweep
+
+      - name: fuzz the parsers
+        # Everything reachable from an untrusted byte. The DNS and DHCP codecs parse
+        # packets from anybody within Wi-Fi range of a field full of strangers, and
+        # the QR parser parses whatever somebody points a camera at.
+        run: |
+          for target in $(grep -rl '^func Fuzz' --include='*_test.go' . | xargs -n1 dirname | sort -u); do
+            echo "== $target"
+            go test "$target" -run '^$' -fuzz . -fuzztime 5m
+          done
+
+      - name: upload any crashers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-corpus
+          path: |
+            **/testdata/fuzz/**
+          if-no-files-found: ignore
+
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: build the protocol package first
+        # The apps' type-aware lint cannot resolve @gatecrash/protocol until its
+        # declarations exist, so the order here is not incidental.
+        run: pnpm --filter @gatecrash/protocol build
+
+      - run: pnpm -r typecheck
+      - run: pnpm -r lint
+      - run: pnpm -r test
+      - run: pnpm -r build
+
+      - name: prettier
+        run: pnpm prettier --check .
+
+      - name: the bundles fit on a Pi over venue wifi
+        # A budget rather than a report. The attendee wallet is loaded by a phone with
+        # one bar, from an SD card, and a dependency that quietly adds 400KB is a
+        # dependency that costs somebody their place in a queue.
+        run: node scripts/check-bundle-size.mjs
+
+  conformance:
+    name: conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: go and typescript agree on the wire
+        # Three implementations of the same formats — the box in Go, the apps in
+        # TypeScript, and eventually the phones in Kotlin and Swift — is three chances
+        # to disagree. The fixtures are generated by Go and read by the TypeScript
+        # tests, so a divergence fails here instead of at a gate.
+        run: ./scripts/check-conformance.sh
+
+  end-to-end:
+    name: end-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+
+      - name: run a whole event
+        # The organizer CLI mints keys and tickets, the box ingests them and serves,
+        # scanners enrol through the QR ceremony, and tickets walk a three-stage venue
+        # — including the refusals, the redirects and the re-entry. This is the demo
+        # from the README, run as a test, so the README cannot drift from the code.
+        run: go run ./cmd/gatecrash-demo -quiet

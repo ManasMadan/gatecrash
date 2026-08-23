@@ -1,0 +1,95 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  # Manual, for a release candidate that should not carry a tag yet.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  binaries:
+    name: binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tags and full history, so the version stamped into the binary is the real
+          # one rather than "unknown".
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: build the apps into the binary
+        # The three PWAs are embedded, so they have to be built before the Go build
+        # or the box ships with an empty asset filesystem — which fails at a gate
+        # rather than here.
+        run: pnpm -r build
+
+      - name: cross-compile
+        run: ./scripts/build.sh
+
+      - name: checksums
+        # Published alongside, because the download path for this project is "somebody
+        # copies a binary onto a Pi in a field" and that is exactly where a truncated
+        # transfer goes unnoticed.
+        run: |
+          cd dist
+          sha256sum gatecrash-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: the arm64 binary actually runs
+        # Under qemu, because the release artefact for a Raspberry Pi is the one thing
+        # that must not be discovered broken by the person holding the Pi.
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq qemu-user-static
+          qemu-aarch64-static dist/gatecrash-linux-arm64 version
+
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/gatecrash-*
+            dist/SHA256SUMS
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  packages:
+    name: npm packages
+    runs-on: ubuntu-latest
+    # Only for a real tag. A workflow_dispatch build is for inspecting artefacts, not
+    # for publishing something nobody can unpublish.
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -r test
+
+      - name: publish what changesets says to publish
+        # Changesets decides the versions and what to publish; this job does not guess.
+        # A release that publishes a package nobody bumped is a release that burns a
+        # version number.
+        run: pnpm changeset publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
