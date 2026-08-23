@@ -175,10 +175,17 @@ export function VenueMap({
             {/* Named along the top edge rather than at the centre, because the
                 centre is where the seat blocks are and two labels on one spot is
                 worse than none. */}
+            {/* Clamped into the visible box. A focused view crops zones that run off
+                the edge, and a label sliced down the middle reads as a rendering
+                bug rather than as "this area continues". */}
             <text
               className="gc-map__zone-label"
-              x={topLeft(zone.shape).x + 1.5}
-              y={topLeft(zone.shape).y + label.zone * (1 + 0.9 * (depth.get(zone.code) ?? 0)) + 0.5}
+              x={Math.max(topLeft(zone.shape).x, viewBox.x) + 1.5}
+              y={
+                Math.max(topLeft(zone.shape).y, viewBox.y) +
+                label.zone * (1 + 0.9 * (depth.get(zone.code) ?? 0)) +
+                0.5
+              }
               fontSize={label.zone}
             >
               {zone.name}
@@ -464,6 +471,13 @@ function computeViewBox(
     }
   }
   if (points.length === 0) return whole
+
+  // The stage is always in view.
+  //
+  // A seat map that crops the stage out is disorienting in the one way that matters
+  // — somebody holding it cannot tell which way round they will be sitting — and
+  // every seat map anybody has ever used shows the stage for exactly that reason.
+  points.push(...(map.stage ?? []))
 
   let minX = Number.POSITIVE_INFINITY
   let minY = Number.POSITIVE_INFINITY

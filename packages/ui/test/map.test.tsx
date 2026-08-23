@@ -183,3 +183,35 @@ describe('VenueMap', () => {
     expect(render(<VenueMap plan={bare} />)).toContain('Follow the signs')
   })
 })
+
+describe('VenueMap focused on one section', () => {
+  it('keeps the stage in view, so the holder knows which way round they are', () => {
+    const withStage = plan()
+    withStage.map = {
+      ...withStage.map!,
+      stage: [
+        { x: 40, y: 2 },
+        { x: 60, y: 2 },
+        { x: 60, y: 8 },
+        { x: 40, y: 8 },
+      ],
+    }
+
+    const html = render(<VenueMap plan={withStage} focusSection="block-a" />)
+    const viewBox = /viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/.exec(html)
+    expect(viewBox).not.toBeNull()
+    const [, , y] = viewBox!.map(Number)
+    // The stage's near edge is at y=8, and the seats are at y=60. A box that starts
+    // below the stage has cropped it out.
+    expect(y).toBeLessThanOrEqual(8)
+  })
+
+  it('keeps a clipped zone’s label inside the view rather than slicing it', () => {
+    const html = render(<VenueMap plan={plan()} focusSection="block-a" />)
+    const viewBox = /viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/.exec(html)
+    const [, x] = viewBox!.map(Number)
+    for (const [, labelX] of html.matchAll(/class="gc-map__zone-label"[^>]*x="([-\d.]+)"/g)) {
+      expect(Number(labelX)).toBeGreaterThanOrEqual(x)
+    }
+  })
+})
