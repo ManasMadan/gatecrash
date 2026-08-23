@@ -6,6 +6,7 @@ export {
   WINDOW_SECONDS,
   generateRotating,
   millisUntilNextWindow,
+  newScanId,
   parsePayload,
   windowAt,
 } from '@/qr'

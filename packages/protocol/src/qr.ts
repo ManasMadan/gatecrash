@@ -63,6 +63,23 @@ export type Payload = StaticPayload | RotatingPayload | UnknownPayload
  * Runs on every decoded camera frame, so the ordering matters: a prefix
  * comparison rejects a supermarket barcode before any allocation happens.
  */
+/**
+ * Mints an idempotency key for a scan.
+ *
+ * The box wants the same 26-character base32 form as a ticket id, not a UUID — and a UUID is
+ * exactly what somebody reaches for, which is why this exists. Reaching for `crypto.randomUUID()`
+ * gets a 400 from the parser, and the API comment that suggested it has been corrected.
+ *
+ * Mint one per *presentation*, not per request, and reuse it on every retry. That is the whole
+ * idempotency contract: the same id returns the verdict the box already gave, while a fresh one
+ * asks a new question — and the answer to that question is `ALREADY_USED`.
+ */
+export function newScanId(): string {
+  const bytes = new Uint8Array(ID_BYTES)
+  crypto.getRandomValues(bytes)
+  return encodeBase32(bytes)
+}
+
 export function parsePayload(raw: string): Payload {
   const text = raw.trim()
 
