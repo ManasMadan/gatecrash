@@ -122,7 +122,11 @@ func runDemo(keep string, quiet bool) error {
 	d.act("Done")
 	if keep != "" {
 		d.note("the box's data is in %s", keep)
-		d.note("inspect it with:  gatecrash verify -db %s", filepath.Join(keep, "gatecrash.db"))
+		d.note("inspect it with:   gatecrash verify -db %s", filepath.Join(keep, "gatecrash.db"))
+		d.note("prove one entry:   gatecrash attendance -db %s <ticket-id>",
+			filepath.Join(keep, "gatecrash.db"))
+		d.note("or start a box on it and open the apps in a browser:")
+		d.note("                   gatecrash serve --data %s", keep)
 	}
 	return nil
 }
@@ -165,6 +169,20 @@ func (d *demo) boot(dir string) error {
 	}
 	if err := opened.Ingest(ctx, body, envelope.Digest()); err != nil {
 		return err
+	}
+
+	// Write the manifest beside the database.
+	//
+	// The box reads it at boot to recover the venue and the keys, so a data directory
+	// without it is one no box can start on — which defeats the whole point of -keep. This
+	// was a real bug: `-keep` left a database that `gatecrash serve` refused, and the docs
+	// told people to do exactly that.
+	raw, err := envelope.Marshal()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), raw, 0o600); err != nil {
+		return fmt.Errorf("writing the manifest beside the database: %w", err)
 	}
 	for _, record := range d.tickets {
 		if err := opened.PutTicketContext(ctx, record.record); err != nil {
