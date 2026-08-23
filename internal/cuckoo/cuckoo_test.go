@@ -318,3 +318,30 @@ func BenchmarkSeen(b *testing.B) {
 		r.Seen(keys[i%len(keys)])
 	}
 }
+
+// TestHashVectorsForThePorts emits the values the Kotlin and Swift implementations
+// assert against.
+//
+// Unsigned 64-bit arithmetic is the easiest place in this protocol to get a plausible
+// wrong answer. Kotlin's ULong and Swift's UInt64 both behave correctly, and both are
+// one careless signed shift away from silently changing every bucket index — which
+// would not look like a bug, it would look like a mesh with a worse delivery rate.
+//
+// Run with -v and copy the output into the port's conformance test.
+func TestHashVectorsForThePorts(t *testing.T) {
+	for _, x := range []uint64{0, 1, 2, ^uint64(0)} {
+		t.Logf("splitmix64(%#016x) = %016x", x, splitmix(x))
+	}
+	for _, s := range []string{"", "gatecrash", "backstage"} {
+		t.Logf("fnv1a64(%q) = %016x", s, fnv1a([]byte(s)))
+	}
+
+	// And the derived values a port can check without reimplementing the filter: the
+	// fingerprint and both bucket indices for a known key in a known-size filter.
+	f := New(1024)
+	for _, n := range []uint64{0, 1, 42} {
+		fingerprint, first, second := f.hash(id(n))
+		t.Logf("id(%d) in a 256-bucket filter: fingerprint=%04x buckets=%d,%d",
+			n, fingerprint, first, second)
+	}
+}

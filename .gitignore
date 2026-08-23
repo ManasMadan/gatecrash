@@ -35,3 +35,7 @@ apps/android/local.properties
 apps/ios/.build/
 apps/ios/**/xcuserdata/
 *.xcworkspace/xcuserdata/
+
+# Backstage port build output
+apps/backstage-android/.build/
+apps/backstage-ios/.build/
