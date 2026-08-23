@@ -1,0 +1,13 @@
+{
+  "name": "@gatecrash/example-foyer-display",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A read-only screen on the venue LAN, driven by the admin stream.",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "gatecrash-client": "workspace:*"
+  }
+}
